@@ -1,0 +1,38 @@
+@using System.ComponentModel
+@inject ExplorerLauncher Explorer
+
+<span class="open-folder">
+    <button type="button" class="btn btn-sm @Class" @onclick="Open" title="Abrir no Explorer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+        @Label
+    </button>
+    @if (_error is not null)
+    {
+        <span class="inline-error" role="alert">@_error</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string[] Segments { get; set; } = [];
+    [Parameter] public string Label { get; set; } = "Abrir pasta";
+    [Parameter] public string? Class { get; set; }
+
+    private string? _error;
+
+    private void Open()
+    {
+        try
+        {
+            Explorer.OpenFolder(Segments);
+            _error = null;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            _error = "A pasta não existe mais.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or PlatformNotSupportedException or Win32Exception)
+        {
+            _error = "Não consegui abrir o Explorer.";
+        }
+    }
+}

@@ -11,6 +11,10 @@
         var next = block.NextSteps();
         var deadlines = block.UpcomingDeadlines();
         var gaps = block.MissingContext();
+        var folderNotes = block.Items()
+            .Select(i => (Item: i, Folder: Result!.FolderOf(i.Course, i.Assignment)))
+            .Where(x => x.Folder.Suggestion is not null || x.Folder.Files.MisnamedDeliverables.Count > 0)
+            .ToList();
     }
 
     <header class="page-head">
@@ -62,6 +66,32 @@
         </section>
 
         <div class="dash-side">
+            @if (folderNotes.Count > 0)
+            {
+                <section class="card card-attention">
+                    <div class="card-head"><h2>Pastas x painel</h2></div>
+                    <ul class="rows compact">
+                        @foreach (var (item, folder) in folderNotes)
+                        {
+                            <li>
+                                <a class="row-note" href="@Display.AssignmentUrl(item.Course, item.Assignment)">
+                                    <b>@item.Course.Code @item.Assignment.Id</b>
+                                    <span>
+                                        @if (folder.Suggestion is { } suggestion)
+                                        {
+                                            @Display.Describe(suggestion)
+                                        }
+                                        @if (folder.Files.MisnamedDeliverables.Count > 0)
+                                        {
+                                            <span class="warn-text">nome fora do padrão</span>
+                                        }
+                                    </span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
             <section class="card">
                 <div class="card-head"><h2>Prazos</h2></div>
                 @if (deadlines.Count == 0)

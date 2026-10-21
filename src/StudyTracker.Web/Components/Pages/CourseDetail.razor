@@ -19,6 +19,7 @@
     {
         var (group, course) = found;
         var progress = course.Progress();
+        var courseFolderExists = Result!.Folders.CourseExists(course);
 
         <PageTitle>@course.Code · Study Tracker</PageTitle>
 
@@ -35,6 +36,14 @@
                     @progress.Submitted de @Display.Plural(progress.Total, "trabalho entregue", "trabalhos entregues")
                 </p>
             </div>
+            @if (courseFolderExists)
+            {
+                <OpenFolderButton Segments="[block.Folder, course.Folder]" Label="Pasta da disciplina" Class="head-action" />
+            }
+            else
+            {
+                <span class="muted head-action">pasta da disciplina não encontrada</span>
+            }
         </header>
         <StatusBar Assignments="course.Assignments" />
 
@@ -42,11 +51,16 @@
             @foreach (var a in course.Assignments)
             {
                 var open = a.Status != AssignmentStatus.Submitted;
+                var folder = Result!.FolderOf(course, a);
                 <li class="card work st-@a.Status.Key()" id="@a.Id">
                     <div class="work-head">
                         <h2>@a.Id</h2>
                         <StatusPill Status="a.Status" />
                         <DueText Assignment="a" Today="Today" />
+                        @if (folder.Folder.Exists)
+                        {
+                            <OpenFolderButton Segments="[block.Folder, course.Folder, a.Id]" Class="head-action" />
+                        }
                     </div>
 
                     @if (!string.IsNullOrEmpty(a.Summary))
@@ -79,12 +93,38 @@
                             <dt>Guia</dt>
                             <dd><code>@a.GuideFile</code></dd>
                         }
-                        @if (a.FolderMissing)
+                        @if (!folder.Folder.Exists)
                         {
                             <dt>Pasta</dt>
                             <dd class="muted">ainda não criada</dd>
                         }
                     </dl>
+
+                    @if (folder.Suggestion is { } suggestion)
+                    {
+                        <p class="note note-suggest">
+                            <b>Pela pasta:</b> @Display.Describe(suggestion).
+                        </p>
+                    }
+                    @if (folder.Files.MisnamedDeliverables.Count > 0)
+                    {
+                        <p class="note note-warn">
+                            <b>Nome fora do padrão:</b> @string.Join(", ", folder.Files.MisnamedDeliverables).
+                            O esperado é @FolderRules.DeliverableBaseName(Result.DeliverablePrefix!, course.Code, a.Id).&lt;ext&gt;
+                        </p>
+                    }
+                    @if (folder.Folder.Entries.Count > 0)
+                    {
+                        <details class="files">
+                            <summary>@Display.Plural(folder.Folder.Entries.Count, "item na pasta", "itens na pasta")</summary>
+                            <ul>
+                                @foreach (var entry in folder.Folder.Entries)
+                                {
+                                    <li class="@(entry.IsDirectory ? "is-dir" : "")">@entry.Name@(entry.IsDirectory ? "/" : "")</li>
+                                }
+                            </ul>
+                        </details>
+                    }
                 </li>
             }
         </ol>

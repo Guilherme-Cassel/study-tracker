@@ -34,5 +34,8 @@
         </NavLink>
     </nav>
 
-    <p class="sidebar-foot" title="@State.FolderPath">@State.FolderPath</p>
+    <div class="sidebar-foot">
+        <span class="foot-path" title="@State.FolderPath">@State.FolderPath</span>
+        <OpenFolderButton Segments="[]" Label="Abrir no Explorer" Class="btn-ghost" />
+    </div>
 </aside>

@@ -1,0 +1,72 @@
+using System.Globalization;
+using StudyTracker.Core.Folders;
+using StudyTracker.Core.Status;
+
+namespace StudyTracker.Infrastructure.Folders;
+
+public sealed class FolderScanner(StudyFolder folder)
+{
+    private static readonly StringComparer NameOrder = StringComparer.Create(CultureInfo.GetCultureInfo("pt-BR"), ignoreCase: true);
+
+    public Task<FolderScan> ScanAsync(Block block, CancellationToken cancellationToken = default) =>
+        Task.Run(() => Scan(block, cancellationToken), cancellationToken);
+
+    public FolderScan Scan(Block block, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(block);
+
+        var assignments = new Dictionary<(string, string), AssignmentFolder>();
+        var courses = new List<string>();
+
+        foreach (var (_, course) in block.Courses())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!TryResolve(out var coursePath, block.Folder, course.Folder) || !Directory.Exists(coursePath))
+                continue;
+            courses.Add(course.Code);
+
+            foreach (var assignment in course.Assignments)
+            {
+                assignments[(course.Code, assignment.Id)] =
+                    TryResolve(out var path, block.Folder, course.Folder, assignment.Id) ? Read(path) : AssignmentFolder.Missing;
+            }
+        }
+
+        return new FolderScan(assignments, courses);
+    }
+
+    private bool TryResolve(out string path, params string[] segments)
+    {
+        try
+        {
+            path = folder.Resolve(segments);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            path = "";
+            return false;
+        }
+    }
+
+    private static AssignmentFolder Read(string path)
+    {
+        try
+        {
+            var info = new DirectoryInfo(path);
+            if (!info.Exists) return AssignmentFolder.Missing;
+
+            var entries = info.EnumerateFileSystemInfos()
+                .Where(e => (e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)
+                .Select(e => new FolderEntry(e.Name, e is DirectoryInfo))
+                .OrderByDescending(e => e.IsDirectory)
+                .ThenBy(e => e.Name, NameOrder)
+                .ToList();
+            return new AssignmentFolder(true, entries);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return AssignmentFolder.Missing;
+        }
+    }
+}

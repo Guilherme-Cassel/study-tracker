@@ -4,4 +4,8 @@
     <ProjectReference Include="..\StudyTracker.Core\StudyTracker.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="StudyTracker.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

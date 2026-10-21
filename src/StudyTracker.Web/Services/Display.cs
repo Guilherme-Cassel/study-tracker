@@ -1,4 +1,5 @@
 using System.Globalization;
+using StudyTracker.Core.Folders;
 using StudyTracker.Core.Status;
 
 namespace StudyTracker.Web.Services;
@@ -74,18 +75,23 @@ public static class Display
 
     public static string AssignmentUrl(Course course, Assignment assignment) => $"{CourseUrl(course)}#{assignment.Id}";
 
-    public static IEnumerable<(string Key, string Label)> StageList =>
-    [
-        ("enunciado", "Enunciado"), ("rubricas", "Rubricas"), ("definicao", "Definição"), ("guia", "Guia"), ("artefatos", "Artefatos")
-    ];
-
-    public static bool IsDone(this Stages stages, string key) => key switch
+    public static string Label(this Stage stage) => stage switch
     {
-        "enunciado" => stages.Brief,
-        "rubricas" => stages.Rubrics,
-        "definicao" => stages.Definition,
-        "guia" => stages.Guide,
-        "artefatos" => stages.Artifacts,
-        _ => throw new ArgumentOutOfRangeException(nameof(key), key, null)
+        Stage.Brief => "Enunciado",
+        Stage.Rubrics => "Rubricas",
+        Stage.Definition => "Definição",
+        Stage.Guide => "Guia",
+        Stage.Artifacts => "Artefatos",
+        _ => stage.ToString()
     };
+
+    public static string Describe(FolderSuggestion suggestion)
+    {
+        var parts = new List<string>();
+        if (suggestion.FolderNowExists) parts.Add("a pasta já existe");
+        if (suggestion.Mark.Count > 0) parts.Add("marcar " + string.Join(", ", suggestion.Mark.Select(Label)));
+        if (suggestion.Unmark.Count > 0) parts.Add("desmarcar " + string.Join(", ", suggestion.Unmark.Select(Label)) + " (não achei na pasta)");
+        if (suggestion.MoveToReady) parts.Add("mudar para " + AssignmentStatus.Ready.Label());
+        return string.Join("; ", parts);
+    }
 }
