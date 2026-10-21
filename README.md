@@ -21,9 +21,9 @@ It runs on your own machine and works directly on the folder where the coursewor
    dotnet run --project src/StudyTracker.Web
    ```
 
-4. Open http://127.0.0.1:5280.
+4. Open http://localhost:5280.
 
-The app only listens on `127.0.0.1`. It is meant for a single user on their own machine.
+The app only listens on the loopback interface (`localhost`). It is meant for a single user on their own machine.
 
 ## Tests
 
