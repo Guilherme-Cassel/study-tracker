@@ -1,0 +1,98 @@
+@page "/blocos/{Code}/trabalhos"
+@inherits StatusPageBase
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var block = context.FindBlock(Code);
+    }
+
+    @if (block is null || !block.IsDetailed)
+    {
+        <PageTitle>Trabalhos · Study Tracker</PageTitle>
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block?.Name ?? Code, block is null ? null : Display.BlockUrl(block)), ("Trabalhos", null)])" />
+        <header class="page-head">
+            <div>
+                <h1>Trabalhos</h1>
+                <p class="sub">
+                    @if (block is null)
+                    {
+                        <span>Não existe um bloco com o código @Code. </span>
+                    }
+                    else
+                    {
+                        <span>@block.Name é um bloco concluído: o arquivo guarda só o que foi entregue. </span>
+                    }
+                    <a href="blocos">Ver blocos</a>
+                </p>
+            </div>
+        </header>
+    }
+    else
+    {
+        var counts = block.CountByStatus();
+        var filter = Display.ParseKey(Status);
+        var all = block.Items().ToList();
+        var items = all
+            .Where(i => filter is null || i.Assignment.Status == filter)
+            .OrderBy(i => i.Assignment.Status.Priority())
+            .ThenBy(i => i.Assignment.DueOn ?? DateOnly.MaxValue)
+            .ThenBy(i => i.Course.Code)
+            .ToList();
+
+        <PageTitle>Trabalhos · @block.Name · Study Tracker</PageTitle>
+
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block.Name, Display.BlockUrl(block)), ("Trabalhos", null)])" />
+        <header class="page-head">
+            <div>
+                <h1>Trabalhos</h1>
+                <p class="sub"><b>@block.Name</b> · @Display.Plural(all.Count, "trabalho", "trabalhos") no bloco</p>
+            </div>
+        </header>
+
+        <nav class="chips" aria-label="Filtrar por status">
+            <a class="chip @(filter is null ? "active" : "")" href="@Display.BlockAssignmentsUrl(block)">Todos <span>@all.Count</span></a>
+            @foreach (var status in Display.StatusesByPriority)
+            {
+                <a class="chip st-@status.Key() @(filter == status ? "active" : "")" href="@Display.BlockAssignmentsUrl(block, status)">
+                    @status.Label() <span>@counts[status]</span>
+                </a>
+            }
+        </nav>
+
+        @if (items.Count == 0)
+        {
+            <p class="empty card">Nenhum trabalho com esse status.</p>
+        }
+        else
+        {
+            <div class="table card" role="table">
+                <div class="tr th" role="row">
+                    <span role="columnheader">Trabalho</span>
+                    <span role="columnheader">Status</span>
+                    <span role="columnheader">Prazo</span>
+                    <span role="columnheader">Próximo passo</span>
+                </div>
+                @foreach (var item in items)
+                {
+                    var a = item.Assignment;
+                    <a class="tr" role="row" href="@Display.AssignmentUrl(block, item.Course, a)">
+                        <span role="cell" class="td-work">
+                            <b>@item.Course.Code @a.Id</b>
+                            <small>@item.Course.Name</small>
+                        </span>
+                        <span role="cell"><StatusPill Status="a.Status" /></span>
+                        <span role="cell"><DueText Assignment="a" Today="Today" Compact="true" /></span>
+                        <span role="cell" class="td-text clamp">
+                            @(a.Status == AssignmentStatus.Submitted ? a.Feedback ?? a.Summary : a.NextStep ?? a.Summary)
+                        </span>
+                    </a>
+                }
+            </div>
+        }
+    }
+</StatusGate>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+    [SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
+}

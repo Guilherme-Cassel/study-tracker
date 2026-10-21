@@ -1,0 +1,255 @@
+@page "/"
+@page "/blocos/{Code}"
+@inherits StatusPageBase
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var data = context;
+        var block = Code is null ? data.DefaultBlock : data.FindBlock(Code);
+    }
+
+    @if (block is null)
+    {
+        <PageTitle>Bloco não encontrado · Study Tracker</PageTitle>
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (Code ?? "?", null)])" />
+        <header class="page-head">
+            <div>
+                <h1>Bloco não encontrado</h1>
+                <p class="sub">Não existe um bloco com o código @Code no arquivo de dados. <a href="blocos">Ver blocos</a></p>
+            </div>
+        </header>
+    }
+    else
+    {
+        var progress = block.Progress();
+        <PageTitle>@block.Name · Study Tracker</PageTitle>
+
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block.Name, null)])" />
+        <header class="page-head">
+            <div>
+                <div class="head-title">
+                    <h1>@block.Name</h1>
+                    <span class="tag @(block.IsCurrent ? "current" : "")">@(block.IsCurrent ? "bloco atual" : block.IsDetailed ? "em aberto" : "concluído")</span>
+                </div>
+                <p class="sub">
+                    <span class="muted">[@block.Code]</span>
+                    · @progress.Submitted de @Display.Plural(progress.Total, "trabalho entregue", "trabalhos entregues")
+                    @if (Code is null || block.IsCurrent)
+                    {
+                        <span> · dados atualizados @Display.SinceText(data.UpdatedOn, Today)</span>
+                    }
+                </p>
+            </div>
+            <div class="head-actions">
+                <BlockPicker Blocks="data.Blocks" Current="block" />
+                <OpenFolderButton Segments="[block.Folder]" Label="Pasta do bloco" />
+            </div>
+        </header>
+
+        @if (block.IsDetailed)
+        {
+            var counts = block.CountByStatus();
+            var next = block.NextSteps();
+            var deadlines = block.UpcomingDeadlines();
+            var gaps = block.MissingContext();
+            var folderNotes = block.Items()
+                .Select(i => (Item: i, Folder: Result!.FolderOf(block, i.Course, i.Assignment)))
+                .Where(x => x.Folder.Suggestion is not null || x.Folder.Files.MisnamedDeliverables.Count > 0)
+                .ToList();
+
+            <nav class="tiles" aria-label="Trabalhos por status">
+                @foreach (var status in Display.StatusesByPriority)
+                {
+                    <a class="tile st-@status.Key()" href="@Display.BlockAssignmentsUrl(block, status)">
+                        <span class="tile-n">@counts[status]</span>
+                        <span class="tile-l">@status.Label()</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="dash">
+                <section class="card dash-main">
+                    <div class="card-head">
+                        <h2>Próximos passos</h2>
+                        <a href="@Display.BlockAssignmentsUrl(block)">ver todos os trabalhos</a>
+                    </div>
+                    @if (next.Count == 0)
+                    {
+                        <p class="empty">Nada em andamento. O que falta é contexto ou já foi entregue.</p>
+                    }
+                    else
+                    {
+                        <ul class="rows">
+                            @foreach (var item in next.Take(6))
+                            {
+                                <li>
+                                    <a class="row" href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">
+                                        <span class="row-id">@item.Course.Code <b>@item.Assignment.Id</b></span>
+                                        <span class="row-body">
+                                            <StatusPill Status="item.Assignment.Status" />
+                                            <span class="row-text clamp">@(item.Assignment.NextStep ?? item.Assignment.Summary ?? item.Course.Name)</span>
+                                        </span>
+                                        <DueText Assignment="item.Assignment" Today="Today" Compact="true" />
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </section>
+
+                <div class="dash-side">
+                    @if (folderNotes.Count > 0)
+                    {
+                        <section class="card card-attention">
+                            <div class="card-head"><h2>Pastas x painel</h2></div>
+                            <ul class="rows compact">
+                                @foreach (var (item, folder) in folderNotes)
+                                {
+                                    <li>
+                                        <a class="row-note" href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">
+                                            <b>@item.Course.Code @item.Assignment.Id</b>
+                                            <span>
+                                                @if (folder.Suggestion is { } suggestion)
+                                                {
+                                                    @Display.Describe(suggestion)
+                                                }
+                                                @if (folder.Files.MisnamedDeliverables.Count > 0)
+                                                {
+                                                    <span class="warn-text">nome fora do padrão</span>
+                                                }
+                                            </span>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </section>
+                    }
+                    <section class="card">
+                        <div class="card-head"><h2>Prazos</h2></div>
+                        @if (deadlines.Count == 0)
+                        {
+                            <p class="empty">Nenhum prazo registrado.</p>
+                        }
+                        else
+                        {
+                            <ul class="deadlines">
+                                @foreach (var item in deadlines.Take(5))
+                                {
+                                    var due = item.Assignment.DueOn!.Value;
+                                    var days = due.DaysUntil(Today);
+                                    <li class="@(days < 0 ? "late" : days <= 3 ? "soon" : "")">
+                                        <span class="dl-date">
+                                            <b>@due.Day.ToString("00")</b>
+                                            <small>@Display.MonthShort(due)</small>
+                                        </span>
+                                        <a href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">@item.Course.Code @item.Assignment.Id</a>
+                                        <span class="dl-left">@Display.DueText(due, Today)</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+
+                    <section class="card">
+                        <div class="card-head"><h2>Falta contexto</h2></div>
+                        @if (gaps.Count == 0)
+                        {
+                            <p class="empty">Todos os trabalhos têm enunciado e rubricas.</p>
+                        }
+                        else
+                        {
+                            <p class="hint">Mandar enunciado e rubricas:</p>
+                            <ul class="gaps">
+                                @foreach (var gap in gaps)
+                                {
+                                    <li>
+                                        <a href="@Display.CourseUrl(block, gap.Course)" class="code-chip">@gap.Course.Code</a>
+                                        <span>
+                                            @foreach (var (a, i) in gap.Assignments.Select((a, i) => (a, i)))
+                                            {
+                                                @(i > 0 ? ", " : "")<a href="@Display.AssignmentUrl(block, gap.Course, a)">@a.Id</a>
+                                            }
+                                        </span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+                </div>
+            </div>
+
+            @foreach (var group in block.Groups!)
+            {
+                <section class="group">
+                    <h2 class="group-title">@group.Title @if (!string.IsNullOrEmpty(group.Detail)) { <span>· @group.Detail</span> }</h2>
+                    <div class="course-grid">
+                        @foreach (var course in group.Courses)
+                        {
+                            var courseProgress = course.Progress();
+                            <a class="card course-card" href="@Display.CourseUrl(block, course)">
+                                <span class="cc-top">
+                                    <span class="code-chip">@course.Code</span>
+                                    <span class="cc-count">@courseProgress.Submitted de @courseProgress.Total entregues</span>
+                                </span>
+                                <span class="cc-name">@course.Name</span>
+                                @if (!string.IsNullOrEmpty(course.Professor))
+                                {
+                                    <span class="cc-prof">Prof. @course.Professor</span>
+                                }
+                                <StatusBar Assignments="course.Assignments" />
+                                <span class="cc-works">
+                                    @foreach (var a in course.Assignments)
+                                    {
+                                        <span class="mini st-@a.Status.Key()" title="@a.Id: @a.Status.Label()">@a.Id</span>
+                                    }
+                                </span>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+        }
+        else
+        {
+            <section class="card">
+                <div class="card-head"><h2>Disciplinas</h2></div>
+                <p class="hint">Bloco concluído: o arquivo de dados guarda só o que foi entregue.</p>
+                <ul class="done-courses">
+                    @foreach (var course in block.CompletedCourses ?? [])
+                    {
+                        <li>
+                            <span class="code-chip">@course.Code</span>
+                            <span class="tl-name">@course.Name</span>
+                            <span class="cc-works">
+                                @foreach (var id in course.AssignmentIds)
+                                {
+                                    <span class="mini st-entregue">@id</span>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        @if (Code is null || block.IsCurrent)
+        {
+            <section class="card">
+                <div class="card-head">
+                    <h2>Atividade recente</h2>
+                    <a href="historico">ver histórico</a>
+                </div>
+                <ul class="log">
+                    @foreach (var entry in data.History.Take(4))
+                    {
+                        <li><time>@Display.ShortDate(entry.Date)</time><span>@entry.Text</span></li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</StatusGate>
+
+@code {
+    [Parameter] public string? Code { get; set; }
+}

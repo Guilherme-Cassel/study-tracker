@@ -1,0 +1,62 @@
+@page "/blocos"
+@inherits StatusPageBase
+
+<PageTitle>Blocos · Study Tracker</PageTitle>
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var data = context;
+        var total = data.Progress();
+        var blocks = data.Blocks.AsEnumerable().Reverse().ToList();
+    }
+
+    <header class="page-head">
+        <div>
+            <h1>Blocos</h1>
+            <p class="sub">
+                @Display.Plural(blocks.Count, "bloco cursado", "blocos cursados")
+                · @total.Submitted de @total.Total trabalhos registrados já entregues
+            </p>
+        </div>
+    </header>
+
+    <div class="overall card">
+        <span class="overall-n">@((int)Math.Round(total.Ratio * 100))%</span>
+        <div class="overall-bar">
+            <StatusBar Progress="total" />
+            <small>dos trabalhos registrados até agora</small>
+        </div>
+    </div>
+
+    <div class="block-grid">
+        @foreach (var block in blocks)
+        {
+            var progress = block.Progress();
+            <a class="card block-card @(block.IsCurrent ? "current" : "")" href="@Display.BlockUrl(block)">
+                <span class="bc-top">
+                    <span class="code-chip quiet">@block.Code</span>
+                    <span class="tag @(block.IsCurrent ? "current" : "")">@(block.IsCurrent ? "bloco atual" : block.IsDetailed ? "em aberto" : "concluído")</span>
+                </span>
+                <span class="bc-name">@block.Name</span>
+                <StatusBar Progress="progress" />
+                <span class="bc-count">@progress.Submitted de @Display.Plural(progress.Total, "trabalho entregue", "trabalhos entregues")</span>
+                <span class="cc-works">
+                    @if (block.IsDetailed)
+                    {
+                        @foreach (var (_, course) in block.Courses())
+                        {
+                            <span class="code-chip quiet" title="@course.Name">@course.Code</span>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var course in block.CompletedCourses ?? [])
+                        {
+                            <span class="code-chip quiet" title="@course.Name">@course.Code</span>
+                        }
+                    }
+                </span>
+            </a>
+        }
+    </div>
+</StatusGate>

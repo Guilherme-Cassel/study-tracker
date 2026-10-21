@@ -1,0 +1,19 @@
+@inject NavigationManager Navigation
+
+<select class="block-picker" aria-label="Trocar de bloco" value="@Current.Code" @onchange="OnChanged">
+    @foreach (var block in Blocks)
+    {
+        <option value="@block.Code">@block.Name [@block.Code]@(block.IsCurrent ? " · atual" : "")</option>
+    }
+</select>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Block> Blocks { get; set; } = [];
+    [Parameter, EditorRequired] public Block Current { get; set; } = default!;
+
+    private void OnChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string code && Blocks.FirstOrDefault(b => b.Code == code) is { } block && block != Current)
+            Navigation.NavigateTo(Display.BlockUrl(block));
+    }
+}
