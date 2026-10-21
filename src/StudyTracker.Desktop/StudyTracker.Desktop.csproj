@@ -21,6 +21,9 @@
   <ItemGroup>
     <EmbeddedResource Include="app.ico" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Template for %LOCALAPPDATA%\StudyTracker\appsettings.Local.json, used by scripts\install.ps1. -->
+    <Content Update="appsettings.Local.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+    <None Update="appsettings.Local.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>
