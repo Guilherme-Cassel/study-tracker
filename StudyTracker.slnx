@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StudyTracker.Core/StudyTracker.Core.csproj" />
+    <Project Path="src/StudyTracker.Infrastructure/StudyTracker.Infrastructure.csproj" />
+    <Project Path="src/StudyTracker.Web/StudyTracker.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StudyTracker.Core.Tests/StudyTracker.Core.Tests.csproj" />
+    <Project Path="tests/StudyTracker.Infrastructure.Tests/StudyTracker.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

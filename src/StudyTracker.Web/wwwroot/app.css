@@ -1,0 +1,54 @@
+:root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1c2230;
+    --muted: #5d6878;
+    --border: #e1e5eb;
+    --accent: #156082;
+    --ok-fg: #1e7a46;
+    --warn-fg: #b4231a;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #13161c;
+        --surface: #1b1f27;
+        --text: #e6e9ef;
+        --muted: #9aa4b2;
+        --border: #2c3240;
+        --accent: #5fb4d9;
+        --ok-fg: #6fd29a;
+        --warn-fg: #ff8a80;
+        color-scheme: dark;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+}
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; }
+
+h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -0.01em; }
+h1:focus { outline: none; }
+
+code { font-size: 14px; }
+.folder { color: var(--muted); }
+.ok { color: var(--ok-fg); font-weight: 600; }
+.warn { color: var(--warn-fg); font-weight: 600; }
+.folder .ok, .folder .warn { margin-left: 6px; }
+
+.blazor-error-boundary {
+    padding: 1rem;
+    border-radius: 8px;
+    background: #b32121;
+    color: white;
+}
+
+.blazor-error-boundary::after { content: "Ocorreu um erro nesta parte da tela."; }

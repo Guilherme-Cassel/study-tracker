@@ -1,0 +1,19 @@
+@page "/"
+@using StudyTracker.Infrastructure
+@inject StudyFolder Folder
+
+<PageTitle>Study Tracker</PageTitle>
+
+<h1>Study Tracker</h1>
+
+<p class="folder">
+    Pasta da faculdade: <code>@Folder.RootPath</code>
+    @if (Folder.IsAvailable)
+    {
+        <span class="ok">encontrada</span>
+    }
+    else
+    {
+        <span class="warn">não encontrada. Confira se o Google Drive está aberto.</span>
+    }
+</p>
