@@ -1,0 +1,170 @@
+@page "/blocos/{Code}/{Sigla}"
+@inherits StatusPageBase
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var block = context.FindBlock(Code);
+        var found = block?.FindCourse(Sigla);
+        var done = block?.CompletedCourses?.FirstOrDefault(c => string.Equals(c.Code, Sigla, StringComparison.OrdinalIgnoreCase));
+    }
+
+    @if (block is null || (found is null && done is null))
+    {
+        <PageTitle>Disciplina não encontrada · Study Tracker</PageTitle>
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block?.Name ?? Code, block is null ? null : Display.BlockUrl(block)), (Sigla, null)])" />
+        <header class="page-head">
+            <div>
+                <h1>Disciplina não encontrada</h1>
+                <p class="sub">
+                    @if (block is null)
+                    {
+                        <span>Não existe um bloco com o código @Code. <a href="blocos">Ver blocos</a></span>
+                    }
+                    else
+                    {
+                        <span>Não existe @Sigla no bloco @block.Name. <a href="@Display.BlockUrl(block)">Ver o bloco</a></span>
+                    }
+                </p>
+            </div>
+        </header>
+    }
+    else if (found is { } detailed)
+    {
+        var (group, course) = detailed;
+        var progress = course.Progress();
+        var courseFolderExists = Result!.Folders.CourseExists(block, course);
+
+        <PageTitle>@course.Code · @block.Name · Study Tracker</PageTitle>
+
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block.Name, Display.BlockUrl(block)), (course.Code, null)])" />
+        <FileDrop Target="[block.Folder, course.Folder]" TargetLabel="@($"pasta da {course.Code}")" Context="courseInputId">
+            <header class="page-head course-head">
+                <span class="code-chip big">@course.Code</span>
+                <div>
+                    <h1>@course.Name</h1>
+                    <p class="sub">
+                        @group.Title
+                        @if (!string.IsNullOrEmpty(course.Professor))
+                        {
+                            <span> · Prof. @course.Professor</span>
+                        }
+                        · @progress.Submitted de @Display.Plural(progress.Total, "trabalho entregue", "trabalhos entregues")
+                    </p>
+                </div>
+                <div class="head-actions">
+                    @if (courseFolderExists)
+                    {
+                        <label class="btn btn-sm" for="@courseInputId" title="Ou arraste arquivos para cima do cabeçalho">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4" /><path d="M7 9l5-5 5 5" /><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
+                            Arquivos da disciplina
+                        </label>
+                        <OpenFolderButton Segments="[block.Folder, course.Folder]" Label="Pasta da disciplina" />
+                    }
+                    else
+                    {
+                        <span class="muted">pasta da disciplina não encontrada</span>
+                    }
+                </div>
+            </header>
+        </FileDrop>
+
+        <StatusBar Assignments="course.Assignments" />
+
+        <div class="card" style="margin-top: 16px">
+            <ol class="work-list">
+                @foreach (var a in course.Assignments)
+                {
+                    var open = a.Status != AssignmentStatus.Submitted;
+                    var folder = Result!.FolderOf(block, course, a);
+                    <li><a class="work-row st-@a.Status.Key()" href="@Display.AssignmentUrl(block, course, a)">
+                        <h3>@a.Id</h3>
+                        <StatusPill Status="a.Status" />
+                        <span>
+                            <span class="wr-text clamp">@(open ? a.NextStep ?? a.Summary : a.Feedback ?? a.Summary)</span>
+                            @if (!folder.Folder.Exists || folder.Suggestion is not null || folder.Files.MisnamedDeliverables.Count > 0)
+                            {
+                                <span class="wr-flags">
+                                    @if (!folder.Folder.Exists)
+                                    {
+                                        <span class="warn-text">pasta não existe</span>
+                                    }
+                                    @if (folder.Suggestion is { } suggestion)
+                                    {
+                                        <span class="st-pronto" style="color: var(--fg)">pela pasta: @Display.Describe(suggestion)</span>
+                                    }
+                                    @if (folder.Files.MisnamedDeliverables.Count > 0)
+                                    {
+                                        <span class="warn-text">nome fora do padrão</span>
+                                    }
+                                </span>
+                            }
+                        </span>
+                        <span class="wr-meta">
+                            <DueText Assignment="a" Today="Today" Compact="true" />
+                            @if (open && a.Stages is { } stages)
+                            {
+                                <span class="stage-dots" title="@string.Join(", ", Enum.GetValues<Stage>().Where(stages.Get).Select(s => s.Label()))">
+                                    @foreach (var stage in Enum.GetValues<Stage>())
+                                    {
+                                        <i class="@(stages.Get(stage) ? "done" : "")"></i>
+                                    }
+                                </span>
+                            }
+                        </span>
+                    </a></li>
+                }
+            </ol>
+        </div>
+    }
+    else
+    {
+        var course = done!;
+        var courseFolderExists = Result!.Folders.CourseExists(block, course);
+
+        <PageTitle>@course.Code · @block.Name · Study Tracker</PageTitle>
+
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block.Name, Display.BlockUrl(block)), (course.Code, null)])" />
+        <header class="page-head course-head">
+            <span class="code-chip big">@course.Code</span>
+            <div>
+                <h1>@course.Name</h1>
+                <p class="sub">Bloco concluído · @Display.Plural(course.AssignmentIds.Count, "trabalho entregue", "trabalhos entregues")</p>
+            </div>
+            <div class="head-actions">
+                @if (courseFolderExists)
+                {
+                    <OpenFolderButton Segments="[block.Folder, course.Folder]" Label="Pasta da disciplina" />
+                }
+                else
+                {
+                    <span class="muted">pasta da disciplina não encontrada</span>
+                }
+            </div>
+        </header>
+
+        <div class="card">
+            <p class="hint">O arquivo de dados guarda só a lista do que foi entregue neste bloco.</p>
+            <ol class="work-list">
+                @foreach (var id in course.AssignmentIds)
+                {
+                    <li class="work-row st-entregue">
+                        <h3>@id</h3>
+                        <StatusPill Status="AssignmentStatus.Submitted" />
+                        <span></span>
+                        <span class="wr-meta">
+                            @if (courseFolderExists)
+                            {
+                                <OpenFolderButton Segments="[block.Folder, course.Folder, id]" Label="Pasta" />
+                            }
+                        </span>
+                    </li>
+                }
+            </ol>
+        </div>
+    }
+</StatusGate>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string Sigla { get; set; } = "";
+}

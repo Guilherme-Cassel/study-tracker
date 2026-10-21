@@ -358,11 +358,11 @@ a.tr:hover { background: var(--surface-2); text-decoration: none; }
 
 .course-head .head-actions { align-self: center; }
 .work-list { list-style: none; margin: 0; padding: 6px 8px; display: grid; }
+.work-list > li + li { border-top: 1px solid var(--border); }
 .work-row {
     display: grid; grid-template-columns: 64px 150px minmax(0, 2fr) auto; gap: 12px; align-items: center;
     padding: 12px 12px; border-radius: 8px; color: var(--text);
 }
-.work-row + .work-row { border-top: 1px solid var(--border); border-radius: 0; }
 a.work-row:hover { background: var(--surface-2); text-decoration: none; }
 .work-row h3 { margin: 0; font-size: 16px; }
 .work-row .wr-text { font-size: 14px; color: var(--muted); }
