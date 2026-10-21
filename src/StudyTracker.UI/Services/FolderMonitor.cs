@@ -1,7 +1,7 @@
 using StudyTracker.Infrastructure;
 using StudyTracker.Infrastructure.Folders;
 
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 // Refreshes StatusState when files change: right away through the file watcher, and by polling,
 // because Google Drive's virtual drive does not always report changes.

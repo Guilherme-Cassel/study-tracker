@@ -4,7 +4,7 @@ using StudyTracker.Infrastructure;
 using StudyTracker.Infrastructure.Folders;
 using StudyTracker.Infrastructure.Status;
 
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 public enum StatusProblem
 {

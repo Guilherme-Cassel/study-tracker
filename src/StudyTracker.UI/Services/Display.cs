@@ -3,7 +3,7 @@ using StudyTracker.Core.Editing;
 using StudyTracker.Core.Folders;
 using StudyTracker.Core.Status;
 
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 public static class Display
 {

@@ -1,6 +1,8 @@
 using StudyTracker.Infrastructure;
 using StudyTracker.Infrastructure.Folders;
 using StudyTracker.Infrastructure.Status;
+using StudyTracker.UI;
+using StudyTracker.UI.Services;
 using StudyTracker.Web.Components;
 using StudyTracker.Web.Services;
 
@@ -57,7 +59,8 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(Routes).Assembly);
 
 if (openBrowser)
     app.Lifetime.ApplicationStarted.Register(() => AppLauncher.OpenBrowser(browserUrl, app.Logger));

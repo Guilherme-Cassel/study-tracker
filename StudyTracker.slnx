@@ -3,11 +3,12 @@
     <Project Path="src/StudyTracker.Core/StudyTracker.Core.csproj" />
     <Project Path="src/StudyTracker.Infrastructure/StudyTracker.Infrastructure.csproj" />
     <Project Path="src/StudyTracker.Launcher/StudyTracker.Launcher.csproj" />
+    <Project Path="src/StudyTracker.UI/StudyTracker.UI.csproj" />
     <Project Path="src/StudyTracker.Web/StudyTracker.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/StudyTracker.Core.Tests/StudyTracker.Core.Tests.csproj" />
     <Project Path="tests/StudyTracker.Infrastructure.Tests/StudyTracker.Infrastructure.Tests.csproj" />
-    <Project Path="tests/StudyTracker.Web.Tests/StudyTracker.Web.Tests.csproj" />
+    <Project Path="tests/StudyTracker.UI.Tests/StudyTracker.UI.Tests.csproj" />
   </Folder>
 </Solution>

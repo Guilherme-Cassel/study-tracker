@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
-using StudyTracker.Web.Services;
+using StudyTracker.UI.Services;
 
-namespace StudyTracker.Web.Components.Shared;
+namespace StudyTracker.UI.Shared;
 
 public abstract class StatusPageBase : ComponentBase, IDisposable
 {

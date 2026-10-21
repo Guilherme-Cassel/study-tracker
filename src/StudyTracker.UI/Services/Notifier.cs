@@ -1,4 +1,4 @@
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 public sealed record Notice(string Text, bool IsError);
 

@@ -1,8 +1,8 @@
 using StudyTracker.Core.Editing;
 using StudyTracker.Core.Status;
-using StudyTracker.Web.Services;
+using StudyTracker.UI.Services;
 
-namespace StudyTracker.Web.Tests;
+namespace StudyTracker.UI.Tests;
 
 public class DisplayTests
 {

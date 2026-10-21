@@ -1,4 +1,4 @@
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 public sealed record UploadOptions(int MaxFileMegabytes, int MaxFilesPerDrop)
 {

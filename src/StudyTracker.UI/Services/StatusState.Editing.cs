@@ -3,7 +3,7 @@ using StudyTracker.Core.Folders;
 using StudyTracker.Core.Status;
 using StudyTracker.Infrastructure.Status;
 
-namespace StudyTracker.Web.Services;
+namespace StudyTracker.UI.Services;
 
 public enum SaveStatus
 {

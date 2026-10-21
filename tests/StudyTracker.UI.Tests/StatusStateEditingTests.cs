@@ -4,9 +4,9 @@ using StudyTracker.Core.Status;
 using StudyTracker.Infrastructure;
 using StudyTracker.Infrastructure.Folders;
 using StudyTracker.Infrastructure.Status;
-using StudyTracker.Web.Services;
+using StudyTracker.UI.Services;
 
-namespace StudyTracker.Web.Tests;
+namespace StudyTracker.UI.Tests;
 
 public sealed class StatusStateEditingTests : IDisposable
 {

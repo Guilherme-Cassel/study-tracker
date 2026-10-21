@@ -11,7 +11,7 @@
     {
         if (!firstRender) return;
         _self = DotNetObjectReference.Create(this);
-        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Layout/FocusRefresh.razor.js");
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StudyTracker.UI/Layout/FocusRefresh.razor.js");
         _subscription = await _module.InvokeAsync<IJSObjectReference>("watch", _self);
     }
 
