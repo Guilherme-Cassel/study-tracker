@@ -17,7 +17,7 @@ internal sealed class MainForm : Form
         _state = services.GetRequiredService<StatusState>();
 
         Text = Title;
-        Icon = new Icon(typeof(MainForm).Assembly.GetManifestResourceStream("StudyTracker.Desktop.app.ico")!);
+        Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(1280, 860);
         MinimumSize = new Size(420, 560);

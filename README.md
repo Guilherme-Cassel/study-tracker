@@ -30,8 +30,8 @@ Only folders inside the configured study folder can be read, written or opened, 
 Requires the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (the SDK includes it) and the WebView2 runtime (included in Windows 11).
 
 1. Download `StudyTracker-<version>-win-x64.zip` from the latest [release](../../releases) and extract it anywhere.
-2. The first time, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip and set the folder path. If the path is missing, the app says so when it starts.
-3. Run `StudyTracker.exe`. Opening it again while it is open brings the existing window to the front.
+2. Run `StudyTracker.exe`. On the first run it asks for the study folder (the one with `status-dados.js`) and the deliverable prefix, and saves them to `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`. It asks again whenever that folder no longer has the data file.
+3. Opening the app again while it is open brings the existing window to the front.
 
 To update, close the app and replace the extracted files with the new release; the settings stay in `%LOCALAPPDATA%`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
 
