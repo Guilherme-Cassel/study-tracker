@@ -27,31 +27,20 @@ Only folders inside the configured study folder can be read, written or opened, 
 
 ## Install (Windows)
 
-Requires the .NET 10 SDK and the WebView2 runtime (included in Windows 11).
+Requires the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (the SDK includes it) and the WebView2 runtime (included in Windows 11).
 
-```powershell
-.\scripts\install.ps1
-```
+1. Download `StudyTracker-<version>-win-x64.zip` from the latest [release](../../releases) and extract it anywhere.
+2. The first time, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip and set the folder path. If the path is missing, the app says so when it starts.
+3. Run `StudyTracker.exe`. Opening it again while it is open brings the existing window to the front.
 
-This publishes the app to `%LOCALAPPDATA%\StudyTracker\app` and creates **Study Tracker** shortcuts on the desktop and in the Start menu. Opening it again while it is open brings the existing window to the front. Run the script again to update: it closes the app and keeps the settings.
-
-On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`. Set the folder path there. If the path is missing, the app says so when it starts.
-
-### From a release
-
-Each [release](../../releases) has a `StudyTracker-<version>-win-x64.zip`. It needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (the SDK includes it). Extract it anywhere, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip, and run `StudyTracker.exe`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
+To update, close the app and replace the extracted files with the new release; the settings stay in `%LOCALAPPDATA%`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
 
 ## Releases
 
-- **CI** (`.github/workflows/ci.yml`) builds and runs the tests on every push and pull request to `main`.
-- **Release** (`.github/workflows/release.yml`) runs when a version tag is pushed: it tests, publishes a framework-dependent win-x64 build with that version and attaches the zip to a GitHub release with generated notes.
+- **Release** (`.github/workflows/release.yml`): every push to `main` runs the tests and, if they pass, publishes a framework-dependent win-x64 build as version `1.0.<run number>`, tagged `v1.0.<run number>`, with generated notes.
+- **CI** (`.github/workflows/ci.yml`): builds and runs the tests on pull requests.
 
-```
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-The version shows at the bottom of the sidebar: `v1.1.0` for releases, `<git describe>-local` for `scripts\install.ps1` builds and `0.0.0-dev` when running from source.
+The version shows at the bottom of the sidebar: `v1.0.<n>` for releases and `0.0.0-dev` when running from source.
 
 ## Settings
 
@@ -66,7 +55,7 @@ Settings are read from `appsettings.json` next to the app, then `%LOCALAPPDATA%\
 
 ## Run from source
 
-1. Create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from `src/StudyTracker.Desktop/appsettings.Local.example.json` (or run the installer once).
+1. Create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from `src/StudyTracker.Desktop/appsettings.Local.example.json`.
 2. Run:
 
    ```

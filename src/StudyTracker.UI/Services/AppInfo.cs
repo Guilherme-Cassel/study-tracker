@@ -5,7 +5,7 @@ namespace StudyTracker.UI.Services;
 
 public static class AppInfo
 {
-    // Releases set it from the tag (1.2.0), scripts\install.ps1 from git describe, plain builds get 0.0.0-dev.
+    // Releases set it to 1.0.<run number>; builds from source get 0.0.0-dev.
     public static string Version { get; } = Describe(
         (Assembly.GetEntryAssembly() ?? typeof(AppInfo).Assembly)
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);

@@ -1,31 +1,30 @@
 name: Release
 
-# Pushing a tag like v1.2.0 tests the code, publishes a framework-dependent build (needs the .NET 10 Desktop
-# Runtime) and attaches it to a GitHub release.
+# Every push to main that passes the tests becomes a release: version 1.0.<run number>, tag v1.0.<run number>,
+# and a framework-dependent build (needs the .NET 10 Desktop Runtime) attached to it.
 on:
   push:
-    tags: ['v*.*.*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      VERSION: 1.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-
-      - name: Read version from tag
-        id: version
-        shell: pwsh
-        run: |
-          $version = '${{ github.ref_name }}'.TrimStart('v')
-          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Tag must look like v1.2.3, got ${{ github.ref_name }}" }
-          "number=$version" >> $env:GITHUB_OUTPUT
 
       - name: Test
         run: dotnet test --configuration Release
@@ -37,13 +36,13 @@ jobs:
           --configuration Release
           --runtime win-x64
           --self-contained false
-          -p:Version=${{ steps.version.outputs.number }}
+          "-p:Version=$env:VERSION"
           --output publish
 
       - name: Package
         shell: pwsh
         run: |
-          $zip = "StudyTracker-${{ steps.version.outputs.number }}-win-x64.zip"
+          $zip = "StudyTracker-$env:VERSION-win-x64.zip"
           Copy-Item src/StudyTracker.Desktop/appsettings.Local.example.json publish/
           Compress-Archive -Path publish/* -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
@@ -53,6 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create '${{ github.ref_name }}' $env:ZIP
-          --title 'Study Tracker ${{ steps.version.outputs.number }}'
+          gh release create "v$env:VERSION" $env:ZIP
+          --target '${{ github.sha }}'
+          --title "Study Tracker $env:VERSION"
           --generate-notes

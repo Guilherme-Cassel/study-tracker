@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Releases override it with the tag (see .github/workflows/release.yml). -->
+    <!-- Releases override it with 1.0.<run number> (see .github/workflows/release.yml). -->
     <Version>0.0.0-dev</Version>
   </PropertyGroup>
 

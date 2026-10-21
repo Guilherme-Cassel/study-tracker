@@ -1,8 +1,7 @@
 name: CI
 
+# Pull requests only: every push to main already runs the tests in the release workflow.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
