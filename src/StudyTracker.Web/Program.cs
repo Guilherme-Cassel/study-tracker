@@ -20,6 +20,7 @@ builder.Services.AddSingleton<ExplorerLauncher>();
 builder.Services.AddSingleton<StatusState>();
 builder.Services.AddHostedService<FolderMonitor>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<Notifier>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

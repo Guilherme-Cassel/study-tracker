@@ -1,5 +1,6 @@
 @page "/disciplinas/{Code}"
 @inherits StatusPageBase
+@inject Notifier Notifier
 
 <StatusGate Result="Result" OnRetry="LoadAsync">
     @{
@@ -57,10 +58,16 @@
                         <h2>@a.Id</h2>
                         <StatusPill Status="a.Status" />
                         <DueText Assignment="a" Today="Today" />
-                        @if (folder.Folder.Exists)
-                        {
-                            <OpenFolderButton Segments="[block.Folder, course.Folder, a.Id]" Class="head-action" />
-                        }
+                        <span class="head-action work-actions">
+                            @if (folder.Folder.Exists)
+                            {
+                                <OpenFolderButton Segments="[block.Folder, course.Folder, a.Id]" />
+                            }
+                            <button type="button" class="btn btn-sm" @onclick="() => _editing = (course, a)">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M14 6l4 4" /></svg>
+                                Editar
+                            </button>
+                        </span>
                     </div>
 
                     @if (!string.IsNullOrEmpty(a.Summary))
@@ -102,9 +109,12 @@
 
                     @if (folder.Suggestion is { } suggestion)
                     {
-                        <p class="note note-suggest">
-                            <b>Pela pasta:</b> @Display.Describe(suggestion).
-                        </p>
+                        <div class="note note-suggest note-action">
+                            <span><b>Pela pasta:</b> @Display.Describe(suggestion).</span>
+                            <button type="button" class="btn btn-sm" disabled="@(_applying is not null)" @onclick="() => ApplyAsync(course, a)">
+                                @(_applying == a ? "Aplicando…" : "Aplicar")
+                            </button>
+                        </div>
                     }
                     @if (folder.Files.MisnamedDeliverables.Count > 0)
                     {
@@ -131,6 +141,37 @@
     }
 </StatusGate>
 
+@if (_editing is { } editing)
+{
+    <AssignmentEditor Course="editing.Course" Assignment="editing.Assignment" OnClose="() => _editing = null" />
+}
+
 @code {
     [Parameter] public string Code { get; set; } = "";
+
+    private (Course Course, Assignment Assignment)? _editing;
+    private Assignment? _applying;
+
+    private async Task ApplyAsync(Course course, Assignment assignment)
+    {
+        _applying = assignment;
+        var outcome = await State.ApplyFolderSuggestionAsync(course.Code, assignment.Id);
+        _applying = null;
+
+        switch (outcome.Status)
+        {
+            case SaveStatus.Saved:
+                Notifier.Info($"{course.Code} {assignment.Id} acertado pela pasta.");
+                break;
+            case SaveStatus.NothingToDo:
+                Notifier.Info("A pasta já bate com o painel.");
+                break;
+            case SaveStatus.Conflict:
+                Notifier.Error("O arquivo mudou no instante da gravação. Tente de novo.");
+                break;
+            default:
+                Notifier.Error("Não consegui gravar o status-dados.js. Confira se o Google Drive está aberto.");
+                break;
+        }
+    }
 }

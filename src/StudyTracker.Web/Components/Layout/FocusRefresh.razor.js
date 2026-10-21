@@ -5,7 +5,8 @@ export function watch(dotnet) {
         const now = Date.now();
         if (now - last < 2000) return;
         last = now;
-        dotnet.invokeMethodAsync("OnVisible");
+        // while reconnecting to the server the call fails; the next focus tries again
+        dotnet.invokeMethodAsync("OnVisible").catch(() => { });
     };
 
     document.addEventListener("visibilitychange", onVisible);

@@ -36,7 +36,8 @@ public sealed record StatusLoadResult(
 
 // Keeps the last data file snapshot and folder scan in memory. Pages read from here; FolderMonitor
 // and the browser focus hook call RefreshAsync, and Changed tells open pages to render again.
-public sealed class StatusState(StudyFolder folder, StatusDataStore store, FolderScanner scanner, ILogger<StatusState> logger)
+public sealed partial class StatusState(
+    StudyFolder folder, StatusDataStore store, FolderScanner scanner, TimeProvider time, ILogger<StatusState> logger)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private StatusSnapshot? _snapshot;

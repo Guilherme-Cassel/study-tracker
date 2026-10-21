@@ -1,0 +1,212 @@
+@using StudyTracker.Core.Editing
+@inject StatusState State
+@inject Notifier Notifier
+@inject TimeProvider Time
+
+<div class="modal-backdrop" @onclick="CancelAsync"></div>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title" @onkeydown="OnKeyDown">
+    <form class="form" @onsubmit="SaveAsync">
+        <h2 id="edit-title">Editar @Course.Code @Assignment.Id <small>@Course.Name</small></h2>
+
+        @if (_conflictMessage is not null)
+        {
+            <p class="note note-warn" role="alert">@_conflictMessage</p>
+        }
+
+        <label>
+            Status
+            <select @ref="_first" @bind="_m.Status" @bind:after="OnStatusChanged">
+                @foreach (var status in Display.StatusesByPriority)
+                {
+                    <option value="@status">@status.Label()</option>
+                }
+            </select>
+            @FileNow(EditField.Status, _conflictCurrent?.Status.Label())
+        </label>
+
+        <div class="row2">
+            <label>
+                Prazo
+                <input type="date" @bind="_m.DueOn" @bind:after="Refresh" />
+                @FileNow(EditField.DueOn, _conflictCurrent?.DueOn is { } d ? Display.Date(d) : "sem prazo")
+            </label>
+            <label>
+                Entregue em
+                <input type="date" @bind="_m.SubmittedOn" @bind:after="Refresh" max="@Today.ToString("yyyy-MM-dd")" />
+                @FieldError(EditField.SubmittedOn)
+                @FileNow(EditField.SubmittedOn, _conflictCurrent?.SubmittedOn is { } s ? Display.Date(s) : "sem data")
+            </label>
+        </div>
+
+        <fieldset>
+            <legend>Etapas</legend>
+            <label class="check"><input type="checkbox" @bind="_m.Brief" @bind:after="Refresh" /> @Stage.Brief.Label()</label>
+            <label class="check"><input type="checkbox" @bind="_m.Rubrics" @bind:after="Refresh" /> @Stage.Rubrics.Label()</label>
+            <label class="check"><input type="checkbox" @bind="_m.Definition" @bind:after="Refresh" /> @Stage.Definition.Label()</label>
+            <label class="check"><input type="checkbox" @bind="_m.Guide" @bind:after="Refresh" /> @Stage.Guide.Label()</label>
+            <label class="check"><input type="checkbox" @bind="_m.Artifacts" @bind:after="Refresh" /> @Stage.Artifacts.Label()</label>
+            @FileNow(EditField.Stages, "outras etapas marcadas")
+        </fieldset>
+
+        <label>
+            Próximo passo
+            <textarea rows="2" @bind="_m.NextStep" @bind:event="oninput" @bind:after="Refresh"></textarea>
+            @FieldError(EditField.NextStep)
+            @FileNow(EditField.NextStep, _conflictCurrent?.NextStep ?? "vazio")
+        </label>
+        <label>
+            Correção
+            <textarea rows="2" @bind="_m.Feedback" @bind:event="oninput" @bind:after="Refresh"></textarea>
+            @FieldError(EditField.Feedback)
+            @FileNow(EditField.Feedback, _conflictCurrent?.Feedback ?? "vazio")
+        </label>
+        <label>
+            Observação
+            <textarea rows="2" @bind="_m.Notes" @bind:event="oninput" @bind:after="Refresh"></textarea>
+            @FieldError(EditField.Notes)
+            @FileNow(EditField.Notes, _conflictCurrent?.Notes ?? "vazio")
+        </label>
+
+        <label>
+            Linha no histórico
+            <input @bind="_history" @bind:event="oninput" @bind:after="OnHistoryTyped" placeholder="gerada a partir do que mudou" maxlength="300" />
+        </label>
+
+        <div class="form-actions">
+            <button type="button" class="btn" @onclick="CancelAsync" disabled="@_saving">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_saving || !HasChanges)">@(_saving ? "Salvando…" : "Salvar")</button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Course Course { get; set; } = default!;
+    [Parameter, EditorRequired] public Assignment Assignment { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private EditModel _m = new();
+    private AssignmentEdit _original = default!;
+    private string _history = "";
+    private bool _historyTyped;
+    private bool _saving;
+    private IReadOnlyList<EditError> _errors = [];
+    private IReadOnlyList<EditField> _conflictFields = [];
+    private AssignmentEdit? _conflictCurrent;
+    private string? _conflictMessage;
+    private ElementReference _first;
+
+    private DateOnly Today => Time.Today();
+
+    private bool HasChanges => _m.ToEdit().ChangedFields(_original).Count > 0;
+
+    protected override void OnInitialized()
+    {
+        _original = AssignmentEdit.From(Assignment);
+        _m = EditModel.From(_original);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await _first.FocusAsync();
+    }
+
+    private void OnStatusChanged()
+    {
+        if (_m.Status == AssignmentStatus.Submitted && _m.SubmittedOn is null && _original.Status != AssignmentStatus.Submitted)
+            _m.SubmittedOn = Today;
+        if (_m.Status != AssignmentStatus.Submitted && _original.SubmittedOn is null)
+            _m.SubmittedOn = null;
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        _errors = [];
+        if (!_historyTyped) _history = Display.HistoryText(Course, Assignment, _original, _m.ToEdit());
+    }
+
+    private void OnHistoryTyped() => _historyTyped = !string.IsNullOrWhiteSpace(_history);
+
+    private async Task SaveAsync()
+    {
+        var edit = _m.ToEdit().Normalized();
+        _errors = edit.Validate(_original, Today);
+        if (_errors.Count > 0) return;
+        if (edit.ChangedFields(_original).Count == 0)
+        {
+            await OnClose.InvokeAsync();
+            return;
+        }
+
+        var history = string.IsNullOrWhiteSpace(_history) ? Display.HistoryText(Course, Assignment, _original, edit) : _history.Trim();
+        _saving = true;
+        var outcome = await State.SaveEditAsync(Course.Code, Assignment.Id, _original, edit, history);
+        _saving = false;
+
+        switch (outcome.Status)
+        {
+            case SaveStatus.Saved:
+                Notifier.Info($"{Course.Code} {Assignment.Id} salvo.");
+                await OnClose.InvokeAsync();
+                break;
+            case SaveStatus.Conflict when outcome.Current is not null:
+                _conflictFields = outcome.ChangedElsewhere ?? [];
+                _conflictCurrent = outcome.Current;
+                _original = outcome.Current;
+                _conflictMessage = "Enquanto você editava, o arquivo mudou neste trabalho (" +
+                    string.Join(", ", _conflictFields.Select(f => f.Label())) +
+                    "). Mantive o que você digitou; confira os campos marcados e salve de novo.";
+                Refresh();
+                break;
+            case SaveStatus.Conflict:
+                _conflictMessage = "O arquivo mudou no instante da gravação. Salve de novo.";
+                break;
+            case SaveStatus.NotFound:
+                Notifier.Error($"{Course.Code} {Assignment.Id} não existe mais no arquivo de dados.");
+                await OnClose.InvokeAsync();
+                break;
+            default:
+                Notifier.Error("Não consegui gravar o status-dados.js. Confira se o Google Drive está aberto.");
+                break;
+        }
+    }
+
+    private Task CancelAsync() => _saving ? Task.CompletedTask : OnClose.InvokeAsync();
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CancelAsync() : Task.CompletedTask;
+
+    private RenderFragment? FieldError(EditField field) =>
+        _errors.FirstOrDefault(e => e.Field == field) is { } error
+            ? @<span class="field-error">@error.Problem.Message()</span>
+            : null;
+
+    private RenderFragment? FileNow(EditField field, string? value) =>
+        _conflictFields.Contains(field)
+            ? @<span class="field-hint">No arquivo agora: @value</span>
+            : null;
+
+    private sealed class EditModel
+    {
+        public AssignmentStatus Status { get; set; }
+        public DateOnly? DueOn { get; set; }
+        public DateOnly? SubmittedOn { get; set; }
+        public bool Brief { get; set; }
+        public bool Rubrics { get; set; }
+        public bool Definition { get; set; }
+        public bool Guide { get; set; }
+        public bool Artifacts { get; set; }
+        public string? NextStep { get; set; }
+        public string? Feedback { get; set; }
+        public string? Notes { get; set; }
+
+        public static EditModel From(AssignmentEdit e) => new()
+        {
+            Status = e.Status, DueOn = e.DueOn, SubmittedOn = e.SubmittedOn,
+            Brief = e.Brief, Rubrics = e.Rubrics, Definition = e.Definition, Guide = e.Guide, Artifacts = e.Artifacts,
+            NextStep = e.NextStep, Feedback = e.Feedback, Notes = e.Notes
+        };
+
+        public AssignmentEdit ToEdit() =>
+            new(Status, DueOn, SubmittedOn, Brief, Rubrics, Definition, Guide, Artifacts, NextStep, Feedback, Notes);
+    }
+}

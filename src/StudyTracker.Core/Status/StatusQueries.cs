@@ -92,6 +92,11 @@ public static class StatusQueries
         return (block.Groups ?? []).SelectMany(g => g.Courses.Select(c => new CourseRef(g, c)));
     }
 
+    public static AssignmentItem? FindAssignment(this Block block, string courseCode, string assignmentId) =>
+        block.Items().FirstOrDefault(i =>
+            string.Equals(i.Course.Code, courseCode, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(i.Assignment.Id, assignmentId, StringComparison.OrdinalIgnoreCase));
+
     public static CourseRef? FindCourse(this Block block, string code) =>
         block.Courses().FirstOrDefault(r => string.Equals(r.Course.Code, code, StringComparison.OrdinalIgnoreCase));
 }

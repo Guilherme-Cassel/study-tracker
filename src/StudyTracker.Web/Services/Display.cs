@@ -1,4 +1,5 @@
 using System.Globalization;
+using StudyTracker.Core.Editing;
 using StudyTracker.Core.Folders;
 using StudyTracker.Core.Status;
 
@@ -84,6 +85,50 @@ public static class Display
         Stage.Artifacts => "Artefatos",
         _ => stage.ToString()
     };
+
+    public static string Label(this EditField field) => field switch
+    {
+        EditField.Status => "status",
+        EditField.DueOn => "prazo",
+        EditField.SubmittedOn => "data de entrega",
+        EditField.Stages => "etapas",
+        EditField.NextStep => "próximo passo",
+        EditField.Feedback => "correção",
+        EditField.Notes => "observação",
+        _ => field.ToString()
+    };
+
+    public static string Message(this EditProblem problem) => problem switch
+    {
+        EditProblem.SubmittedOnRequired => "Informe a data em que foi entregue.",
+        EditProblem.SubmittedOnWithoutSubmission => "Data de entrega só vale para trabalho entregue.",
+        EditProblem.SubmittedOnInFuture => "A data de entrega não pode estar no futuro.",
+        EditProblem.TooLong => $"Texto longo demais (máximo de {AssignmentEdit.MaxTextLength} caracteres).",
+        _ => problem.ToString()
+    };
+
+    // Same wording the static panel used for its history lines.
+    public static string HistoryText(Course course, Assignment assignment, AssignmentEdit original, AssignmentEdit edit)
+    {
+        var a = original.Normalized();
+        var b = edit.Normalized();
+        var parts = new List<string>();
+        if (a.Status != b.Status) parts.Add($"{a.Status.Label()} para {b.Status.Label()}");
+        if (a.DueOn != b.DueOn) parts.Add(b.DueOn is { } due ? $"prazo {Date(due)}" : "prazo removido");
+        if (a.SubmittedOn != b.SubmittedOn) parts.Add(b.SubmittedOn is { } on ? $"entregue em {Date(on)}" : "data de entrega removida");
+
+        var stages = Enum.GetValues<Stage>();
+        var done = stages.Where(s => b.HasStage(s) && !a.HasStage(s)).Select(Label).ToList();
+        var reopened = stages.Where(s => !b.HasStage(s) && a.HasStage(s)).Select(Label).ToList();
+        if (done.Count > 0) parts.Add("etapas concluídas: " + string.Join(", ", done));
+        if (reopened.Count > 0) parts.Add("etapas reabertas: " + string.Join(", ", reopened));
+
+        if (a.Feedback != b.Feedback) parts.Add(b.Feedback is null ? "correção removida" : a.Feedback is null ? "correção registrada" : "correção atualizada");
+        if (a.NextStep != b.NextStep) parts.Add(b.NextStep is null ? "próximo passo removido" : "próximo passo atualizado");
+        if (a.Notes != b.Notes) parts.Add(b.Notes is null ? "observação removida" : "observação atualizada");
+
+        return parts.Count == 0 ? "" : $"{course.Code} {assignment.Id}: {string.Join(", ", parts)}.";
+    }
 
     public static string Describe(FolderSuggestion suggestion)
     {

@@ -1,0 +1,35 @@
+@implements IDisposable
+@inject Notifier Notifier
+
+<div class="toasts" role="status" aria-live="polite">
+    @foreach (var (id, notice) in _notices)
+    {
+        <div class="toast @(notice.IsError ? "error" : "")" @key="id">
+            <span>@notice.Text</span>
+            <button type="button" class="toast-close" aria-label="Fechar" @onclick="() => Remove(id)">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<(int Id, Notice Notice)> _notices = [];
+    private int _next;
+
+    protected override void OnInitialized() => Notifier.Posted += OnPosted;
+
+    private void OnPosted(Notice notice) => _ = InvokeAsync(async () =>
+    {
+        var id = ++_next;
+        _notices.Add((id, notice));
+        StateHasChanged();
+        await Task.Delay(notice.IsError ? 9000 : 4500);
+        Remove(id);
+    });
+
+    private void Remove(int id)
+    {
+        if (_notices.RemoveAll(n => n.Id == id) > 0) StateHasChanged();
+    }
+
+    public void Dispose() => Notifier.Posted -= OnPosted;
+}

@@ -7,5 +7,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/StudyTracker.Core.Tests/StudyTracker.Core.Tests.csproj" />
     <Project Path="tests/StudyTracker.Infrastructure.Tests/StudyTracker.Infrastructure.Tests.csproj" />
+    <Project Path="tests/StudyTracker.Web.Tests/StudyTracker.Web.Tests.csproj" />
   </Folder>
 </Solution>
