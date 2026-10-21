@@ -9,11 +9,6 @@ public static class AppLauncher
     public const string InstanceName = @"Local\StudyTracker";
     public const string DefaultUrl = "http://localhost:5280";
 
-    public static string UserConfigDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StudyTracker");
-
-    public static string UserConfigFile => Path.Combine(UserConfigDirectory, "appsettings.Local.json");
-
     public static string BrowserUrl(IConfiguration configuration)
     {
         var first = (configuration["Urls"] ?? DefaultUrl).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();

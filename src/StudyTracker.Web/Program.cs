@@ -1,6 +1,3 @@
-using StudyTracker.Infrastructure;
-using StudyTracker.Infrastructure.Folders;
-using StudyTracker.Infrastructure.Status;
 using StudyTracker.UI;
 using StudyTracker.UI.Services;
 using StudyTracker.Web.Components;
@@ -18,7 +15,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 
 builder.Configuration
     .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false)
-    .AddJsonFile(AppLauncher.UserConfigFile, optional: true, reloadOnChange: false)
+    .AddJsonFile(ServiceRegistration.UserConfigFile, optional: true, reloadOnChange: false)
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
@@ -32,18 +29,7 @@ if (!isFirstInstance)
     return;
 }
 
-builder.Services.AddSingleton(new StudyFolder(
-    builder.Configuration["StudyFolder:RootPath"],
-    builder.Configuration["StudyFolder:DeliverablePrefix"]));
-builder.Services.AddSingleton<StatusDataStore>();
-builder.Services.AddSingleton<FolderScanner>();
-builder.Services.AddSingleton<ExplorerLauncher>();
-builder.Services.AddSingleton<AssignmentFileWriter>();
-builder.Services.AddSingleton(UploadOptions.From(builder.Configuration));
-builder.Services.AddSingleton<StatusState>();
-builder.Services.AddHostedService<FolderMonitor>();
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddScoped<Notifier>();
+builder.Services.AddStudyTracker(builder.Configuration);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
