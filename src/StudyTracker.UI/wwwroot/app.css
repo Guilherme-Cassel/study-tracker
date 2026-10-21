@@ -456,3 +456,4 @@ label.btn { cursor: pointer; }
 @media (max-width: 560px) {
     .file-fields { grid-template-columns: minmax(0, 1fr); }
 }
+.foot-version { font-size: 11.5px; color: var(--muted); opacity: 0.8; margin-top: 4px; }

@@ -25,9 +25,17 @@ if ($running) {
     Get-Process -Name 'StudyTracker' -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
-Write-Host "Publishing to $appDir ..."
+# Shown in the app's sidebar, so a local build is never mistaken for a release.
+$version = 'local'
+try {
+    $described = git -C $repo describe --tags --always --dirty
+    if ($LASTEXITCODE -eq 0 -and $described) { $version = "$described-local" }
+}
+catch { }
+
+Write-Host "Publishing $version to $appDir ..."
 if (Test-Path $appDir) { Remove-Item $appDir -Recurse -Force }
-dotnet publish $project -c Release -o $appDir --nologo -v quiet
+dotnet publish $project -c Release -o $appDir --nologo -v quiet "-p:InformationalVersion=$version"
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 foreach ($required in @('StudyTracker.exe', 'wwwroot\index.html', 'appsettings.json')) {
     if (-not (Test-Path (Join-Path $appDir $required))) { throw "Published app is missing $required." }
