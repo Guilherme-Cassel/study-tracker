@@ -1,0 +1,27 @@
+<span class="bar" role="img" aria-label="@AriaLabel">
+    @foreach (var (status, count) in Segments)
+    {
+        <span class="seg st-@status.Key()" style="width:@Width(count)"></span>
+    }
+</span>
+
+@code {
+    [Parameter] public IReadOnlyList<Assignment>? Assignments { get; set; }
+    [Parameter] public Progress? Progress { get; set; }
+
+    private int Total => Assignments?.Count ?? Progress?.Total ?? 0;
+
+    private IEnumerable<(AssignmentStatus Status, int Count)> Segments =>
+        Assignments is not null
+            ? Display.StatusesByPriority.Reverse()
+                .Select(s => (s, Assignments.Count(a => a.Status == s))).Where(x => x.Item2 > 0)
+            : Progress is { Submitted: > 0 } p ? [(AssignmentStatus.Submitted, p.Submitted)] : [];
+
+    private string Width(int count) =>
+        Total == 0 ? "0" : (count * 100.0 / Total).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private string AriaLabel =>
+        Assignments is not null
+            ? string.Join(", ", Segments.Select(s => $"{s.Count} {s.Status.Label()}"))
+            : $"{Progress?.Submitted ?? 0} de {Total} entregues";
+}

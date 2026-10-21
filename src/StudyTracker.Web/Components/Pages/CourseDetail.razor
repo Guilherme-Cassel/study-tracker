@@ -1,0 +1,96 @@
+@page "/disciplinas/{Code}"
+@inherits StatusPageBase
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var block = context.CurrentBlock;
+        var found = block.FindCourse(Code);
+    }
+
+    @if (found is null)
+    {
+        <PageTitle>Disciplina não encontrada · Study Tracker</PageTitle>
+        <header class="page-head">
+            <h1>Disciplina não encontrada</h1>
+            <p class="sub">Não existe @Code no bloco atual. <a href="disciplinas">Ver disciplinas</a></p>
+        </header>
+    }
+    else
+    {
+        var (group, course) = found;
+        var progress = course.Progress();
+
+        <PageTitle>@course.Code · Study Tracker</PageTitle>
+
+        <p class="crumbs"><a href="disciplinas">Disciplinas</a> / @group.Title</p>
+        <header class="page-head course-head">
+            <span class="code-chip big">@course.Code</span>
+            <div>
+                <h1>@course.Name</h1>
+                <p class="sub">
+                    @if (!string.IsNullOrEmpty(course.Professor))
+                    {
+                        <span>Prof. @course.Professor · </span>
+                    }
+                    @progress.Submitted de @Display.Plural(progress.Total, "trabalho entregue", "trabalhos entregues")
+                </p>
+            </div>
+        </header>
+        <StatusBar Assignments="course.Assignments" />
+
+        <ol class="works">
+            @foreach (var a in course.Assignments)
+            {
+                var open = a.Status != AssignmentStatus.Submitted;
+                <li class="card work st-@a.Status.Key()" id="@a.Id">
+                    <div class="work-head">
+                        <h2>@a.Id</h2>
+                        <StatusPill Status="a.Status" />
+                        <DueText Assignment="a" Today="Today" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(a.Summary))
+                    {
+                        <p class="work-summary">@a.Summary</p>
+                    }
+                    @if (open)
+                    {
+                        <StageChips Stages="a.Stages" />
+                    }
+
+                    <dl class="facts">
+                        @if (open && !string.IsNullOrEmpty(a.NextStep))
+                        {
+                            <dt>Próximo passo</dt>
+                            <dd>@a.NextStep</dd>
+                        }
+                        @if (!string.IsNullOrEmpty(a.Feedback))
+                        {
+                            <dt>Correção</dt>
+                            <dd>@a.Feedback</dd>
+                        }
+                        @if (!string.IsNullOrEmpty(a.Notes))
+                        {
+                            <dt>Observação</dt>
+                            <dd>@a.Notes</dd>
+                        }
+                        @if (!string.IsNullOrEmpty(a.GuideFile))
+                        {
+                            <dt>Guia</dt>
+                            <dd><code>@a.GuideFile</code></dd>
+                        }
+                        @if (a.FolderMissing)
+                        {
+                            <dt>Pasta</dt>
+                            <dd class="muted">ainda não criada</dd>
+                        }
+                    </dl>
+                </li>
+            }
+        </ol>
+    }
+</StatusGate>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+}

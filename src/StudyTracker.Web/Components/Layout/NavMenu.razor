@@ -1,0 +1,38 @@
+@inject StatusState State
+
+<aside class="sidebar">
+    <a class="brand" href="/">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="var(--accent)" />
+            <rect x="7" y="8" width="18" height="4" rx="2" fill="var(--st-entregue-mark)" />
+            <rect x="7" y="14" width="13" height="4" rx="2" fill="var(--st-andamento-mark)" />
+            <rect x="7" y="20" width="8" height="4" rx="2" fill="var(--st-pronto-mark)" />
+        </svg>
+        <span>Study Tracker</span>
+    </a>
+
+    <nav class="nav" aria-label="Principal">
+        <NavLink href="" Match="NavLinkMatch.All">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+            Painel
+        </NavLink>
+        <NavLink href="trabalhos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>
+            Trabalhos
+        </NavLink>
+        <NavLink href="disciplinas">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" /></svg>
+            Disciplinas
+        </NavLink>
+        <NavLink href="curso">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z" /><path d="M6 11v5c3 2 9 2 12 0v-5" /></svg>
+            Curso
+        </NavLink>
+        <NavLink href="historico">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            Histórico
+        </NavLink>
+    </nav>
+
+    <p class="sidebar-foot" title="@State.FolderPath">@State.FolderPath</p>
+</aside>

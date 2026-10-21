@@ -1,0 +1,14 @@
+@if (Stages is not null)
+{
+    <ul class="stages" aria-label="Etapas">
+        @foreach (var (key, label) in Display.StageList)
+        {
+            var done = Stages.IsDone(key);
+            <li class="stage @(done ? "done" : "")"><span aria-hidden="true">@(done ? "✓" : "○")</span> @label</li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public Stages? Stages { get; set; }
+}

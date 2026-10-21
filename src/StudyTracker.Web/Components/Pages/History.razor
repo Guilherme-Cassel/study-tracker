@@ -1,0 +1,26 @@
+@page "/historico"
+@inherits StatusPageBase
+
+<PageTitle>Histórico · Study Tracker</PageTitle>
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    <header class="page-head">
+        <h1>Histórico</h1>
+        <p class="sub">As @StatusData.MaxHistoryEntries atualizações mais recentes registradas no status-dados.js</p>
+    </header>
+
+    <section class="card">
+        @foreach (var day in context.History.GroupBy(h => h.Date))
+        {
+            <div class="log-day">
+                <h2>@Display.WeekdayDate(day.Key) <span class="muted">· @Display.SinceText(day.Key, Today)</span></h2>
+                <ul class="log">
+                    @foreach (var entry in day)
+                    {
+                        <li><span>@entry.Text</span></li>
+                    }
+                </ul>
+            </div>
+        }
+    </section>
+</StatusGate>

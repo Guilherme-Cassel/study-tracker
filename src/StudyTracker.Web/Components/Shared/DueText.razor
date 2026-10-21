@@ -1,0 +1,17 @@
+@if (Assignment.Status == AssignmentStatus.Submitted && Assignment.SubmittedOn is { } submitted)
+{
+    <span class="due">entregue em @Display.Date(submitted)</span>
+}
+else if (Assignment.Status != AssignmentStatus.Submitted && Assignment.DueOn is { } due)
+{
+    var days = due.DaysUntil(Today);
+    <span class="due @(days < 0 ? "late" : days <= 3 ? "soon" : "")" title="Prazo @Display.Date(due)">
+        @(Compact ? Display.ShortDate(due) : $"prazo {Display.Date(due)}") · @Display.DueText(due, Today)
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public Assignment Assignment { get; set; } = default!;
+    [Parameter, EditorRequired] public DateOnly Today { get; set; }
+    [Parameter] public bool Compact { get; set; }
+}

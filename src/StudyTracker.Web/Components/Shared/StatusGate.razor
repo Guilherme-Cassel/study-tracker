@@ -1,0 +1,42 @@
+@if (Result is null)
+{
+    <p class="muted loading">Carregando…</p>
+}
+else if (Result.Data is null)
+{
+    <section class="problem">
+        <h2>@Title</h2>
+        <p>@Message</p>
+        @if (!string.IsNullOrEmpty(Result.Detail))
+        {
+            <p class="problem-detail"><code>@Result.Detail</code></p>
+        }
+        <button class="btn" @onclick="OnRetry">Tentar de novo</button>
+    </section>
+}
+else
+{
+    @ChildContent(Result.Data)
+}
+
+@code {
+    [Inject] private StatusState State { get; set; } = default!;
+
+    [Parameter, EditorRequired] public StatusLoadResult? Result { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<StatusData> ChildContent { get; set; } = default!;
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    private string Title => Result?.Problem switch
+    {
+        StatusProblem.FolderUnavailable => "Pasta da faculdade não encontrada",
+        StatusProblem.FileMissing => "Arquivo de dados não encontrado",
+        _ => "Não consegui ler o arquivo de dados"
+    };
+
+    private string Message => Result?.Problem switch
+    {
+        StatusProblem.FolderUnavailable => $"Não achei {State.FolderPath}. Confira se o Google Drive está aberto e sincronizado.",
+        StatusProblem.FileMissing => $"A pasta existe, mas não tem o status-dados.js. Ele deveria estar em {State.FolderPath}.",
+        _ => "O status-dados.js tem algum erro de formato. Corrija o arquivo e tente de novo."
+    };
+}

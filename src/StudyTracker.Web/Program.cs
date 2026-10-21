@@ -1,5 +1,7 @@
 using StudyTracker.Infrastructure;
+using StudyTracker.Infrastructure.Status;
 using StudyTracker.Web.Components;
+using StudyTracker.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,9 @@ builder.Configuration
     .AddCommandLine(args);
 
 builder.Services.AddSingleton(new StudyFolder(builder.Configuration["StudyFolder:RootPath"]));
+builder.Services.AddSingleton<StatusDataStore>();
+builder.Services.AddSingleton<StatusState>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

@@ -1,0 +1,46 @@
+@page "/disciplinas"
+@inherits StatusPageBase
+
+<PageTitle>Disciplinas · Study Tracker</PageTitle>
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var block = context.CurrentBlock;
+    }
+
+    <header class="page-head">
+        <h1>Disciplinas</h1>
+        <p class="sub">@block.Name <span class="muted">[@block.Code]</span></p>
+    </header>
+
+    @foreach (var group in block.Groups ?? [])
+    {
+        <section class="group">
+            <h2 class="group-title">@group.Title @if (!string.IsNullOrEmpty(group.Detail)) { <span>· @group.Detail</span> }</h2>
+            <div class="course-grid">
+                @foreach (var course in group.Courses)
+                {
+                    var progress = course.Progress();
+                    <a class="card course-card" href="@Display.CourseUrl(course)">
+                        <span class="cc-top">
+                            <span class="code-chip">@course.Code</span>
+                            <span class="cc-count">@progress.Submitted de @progress.Total entregues</span>
+                        </span>
+                        <span class="cc-name">@course.Name</span>
+                        @if (!string.IsNullOrEmpty(course.Professor))
+                        {
+                            <span class="cc-prof">Prof. @course.Professor</span>
+                        }
+                        <StatusBar Assignments="course.Assignments" />
+                        <span class="cc-works">
+                            @foreach (var a in course.Assignments)
+                            {
+                                <span class="mini st-@a.Status.Key()" title="@a.Id: @a.Status.Label()">@a.Id</span>
+                            }
+                        </span>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+</StatusGate>

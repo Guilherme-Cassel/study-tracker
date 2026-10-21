@@ -1,0 +1,5 @@
+<span class="pill st-@Status.Key()">@Status.Label()</span>
+
+@code {
+    [Parameter, EditorRequired] public AssignmentStatus Status { get; set; }
+}

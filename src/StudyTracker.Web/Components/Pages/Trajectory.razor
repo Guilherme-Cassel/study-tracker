@@ -1,0 +1,80 @@
+@page "/curso"
+@inherits StatusPageBase
+
+<PageTitle>Curso · Study Tracker</PageTitle>
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var data = context;
+        var total = data.Progress();
+        var blocks = data.Blocks.AsEnumerable().Reverse().ToList();
+    }
+
+    <header class="page-head">
+        <h1>Curso</h1>
+        <p class="sub">
+            @Display.Plural(blocks.Count, "bloco cursado", "blocos cursados")
+            · @total.Submitted de @total.Total trabalhos registrados já entregues
+        </p>
+    </header>
+
+    <div class="overall card">
+        <span class="overall-n">@((int)Math.Round(total.Ratio * 100))%</span>
+        <div class="overall-bar">
+            <StatusBar Progress="total" />
+            <small>dos trabalhos registrados até agora</small>
+        </div>
+    </div>
+
+    <ol class="timeline">
+        @foreach (var block in blocks)
+        {
+            var progress = block.Progress();
+            <li class="card tl-block @(block.IsCurrent ? "current" : "")">
+                <div class="tl-head">
+                    <div>
+                        <h2>@block.Name</h2>
+                        <p class="sub"><span class="muted">[@block.Code]</span> · @(block.IsCurrent ? "bloco atual" : "concluído")</p>
+                    </div>
+                    <span class="tl-count">@progress.Submitted/@progress.Total</span>
+                </div>
+                <StatusBar Progress="progress" />
+
+                <ul class="tl-courses">
+                    @if (block.CompletedCourses is { } done)
+                    {
+                        @foreach (var course in done)
+                        {
+                            <li>
+                                <span class="code-chip">@course.Code</span>
+                                <span class="tl-name">@course.Name</span>
+                                <span class="cc-works">
+                                    @foreach (var id in course.AssignmentIds)
+                                    {
+                                        <span class="mini st-entregue">@id</span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var (_, course) in block.Courses())
+                        {
+                            <li>
+                                <a href="@Display.CourseUrl(course)" class="code-chip">@course.Code</a>
+                                <a href="@Display.CourseUrl(course)" class="tl-name">@course.Name</a>
+                                <span class="cc-works">
+                                    @foreach (var a in course.Assignments)
+                                    {
+                                        <span class="mini st-@a.Status.Key()" title="@a.Id: @a.Status.Label()">@a.Id</span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    }
+                </ul>
+            </li>
+        }
+    </ol>
+</StatusGate>
