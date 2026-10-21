@@ -39,12 +39,12 @@ On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appset
 
 ### From a release
 
-Each [release](../../releases) has a self-contained `StudyTracker-<version>-win-x64.zip` (no .NET install needed). Extract it anywhere, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip, and run `StudyTracker.exe`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
+Each [release](../../releases) has a `StudyTracker-<version>-win-x64.zip`. It needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (the SDK includes it). Extract it anywhere, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip, and run `StudyTracker.exe`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
 
 ## Releases
 
 - **CI** (`.github/workflows/ci.yml`) builds and runs the tests on every push and pull request to `main`.
-- **Release** (`.github/workflows/release.yml`) runs when a version tag is pushed: it tests, publishes a self-contained win-x64 build with that version and attaches the zip to a GitHub release with generated notes.
+- **Release** (`.github/workflows/release.yml`) runs when a version tag is pushed: it tests, publishes a framework-dependent win-x64 build with that version and attaches the zip to a GitHub release with generated notes.
 
 ```
 git tag v1.1.0
