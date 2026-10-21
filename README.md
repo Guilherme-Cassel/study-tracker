@@ -1,8 +1,8 @@
 # Study Tracker
 
-Local app to track college coursework: status of every assignment by term and course, deadlines, grades feedback, and submission files organized right in the course folders.
+Windows desktop app to track college coursework: status of every assignment by term and course, deadlines, grades feedback, and submission files organized right in the course folders.
 
-It runs on your own machine and works directly on the folder where the coursework lives (a Google Drive for desktop folder, in my case). There is no database: the folder and its `status-dados.js` file are the source of truth, so the app, the old static panel and an AI assistant can all keep working on the same data.
+It works directly on the folder where the coursework lives (a Google Drive for desktop folder, in my case). There is no database: the folder and its `status-dados.js` file are the source of truth, so the app, the old static panel and an AI assistant can all keep working on the same data.
 
 The interface is in Portuguese; the code is in English.
 
@@ -27,17 +27,15 @@ Only folders inside the configured study folder can be read, written or opened, 
 
 ## Install (Windows)
 
-Requires the .NET 10 SDK.
+Requires the .NET 10 SDK and the WebView2 runtime (included in Windows 11).
 
 ```powershell
 .\scripts\install.ps1
 ```
 
-This publishes the app to `%LOCALAPPDATA%\StudyTracker\app` and creates a **Study Tracker** shortcut on the desktop. The shortcut starts the server without a console window and opens the browser; if the app is already running it only opens the browser. Run the script again to update: settings are kept.
+This publishes the app to `%LOCALAPPDATA%\StudyTracker\app` and creates **Study Tracker** shortcuts on the desktop and in the Start menu. Opening it again while it is open brings the existing window to the front. Run the script again to update: it closes the app and keeps the settings.
 
-`.\scripts\install.ps1 -StartWithWindows` also starts the app when you sign in.
-
-On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`. Check the folder path there.
+On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`. Set the folder path there. If the path is missing, the app says so when it starts.
 
 ## Settings
 
@@ -47,22 +45,19 @@ On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appset
 | `StudyFolder:DeliverablePrefix` | empty | File name prefix of submitted work, e.g. `guilherme_cassel` in `guilherme_cassel_DR3_TP1.pdf` |
 | `StudyFolder:PollSeconds` | `30` | How often folders are read again, besides the file watcher |
 | `StudyFolder:MaxUploadMegabytes` | `200` | Largest file accepted by drag and drop |
-| `Urls` | `http://localhost:5280` | Address the app listens on (loopback only) |
 
-Settings are read from `appsettings.json`, then `appsettings.Local.json` next to the app, then `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`, then environment variables and command line.
+Settings are read from `appsettings.json` next to the app, then `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`, then environment variables and command line.
 
 ## Run from source
 
-1. Copy `src/StudyTracker.Web/appsettings.Local.example.json` to `appsettings.Local.json` in the same folder and set the paths.
+1. Create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from `src/StudyTracker.Desktop/appsettings.Local.example.json` (or run the installer once).
 2. Run:
 
    ```
-   dotnet run --project src/StudyTracker.Web
+   dotnet run --project src/StudyTracker.Desktop
    ```
 
-3. Open http://localhost:5280.
-
-The app only listens on the loopback interface. It is meant for a single user on their own machine.
+In Development the WebView developer tools are enabled (F12).
 
 ## Tests
 
@@ -76,11 +71,11 @@ dotnet test
 |---|---|
 | `StudyTracker.Core` | Domain model and rules (priorities, folder rules, file naming, edits), no file access |
 | `StudyTracker.Infrastructure` | Reading and writing the study folder: data file, folder scan, watcher, file writer, Explorer |
-| `StudyTracker.Web` | Blazor Server UI (ASP.NET Core, .NET 10) |
-| `StudyTracker.Launcher` | Tiny Windows app used by the shortcut to start the server without a console |
-| `tests/*` | xUnit tests for Core, Infrastructure and Web |
+| `StudyTracker.UI` | Razor class library with the screens, components, CSS and app state |
+| `StudyTracker.Desktop` | WinForms window hosting the screens in a BlazorWebView (Blazor Hybrid, .NET 10) |
+| `tests/*` | xUnit tests for Core, Infrastructure and UI |
 
 ## Notes
 
-- Google Drive's virtual drive can drop file system events, so folders are also read on a timer and whenever the browser tab gets focus.
-- `StudyTracker.Web` must stay a console app (`OutputType` `Exe`): the package that ships `blazor.web.js` only adds it to console apps. The launcher exists so the shortcut can still start it without a window, and the install script checks the script was published.
+- There is no web server: the screens run inside the app process and render in WebView2, so the app can read the Google Drive folder and open Explorer windows in the user's session.
+- Google Drive's virtual drive can drop file system events, so folders are also read on a timer and whenever the window is activated.
