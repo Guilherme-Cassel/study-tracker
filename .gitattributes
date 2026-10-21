@@ -1,2 +1,5 @@
 # Test fixtures must match status-dados.js byte for byte, which uses LF
 tests/**/Fixtures/*.js text eol=lf
+
+# Binary assets
+*.ico binary
