@@ -29,6 +29,8 @@ public static class ServiceRegistration
         services.AddHostedService<FolderMonitor>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<Notifier>();
+        services.AddScoped<Theme>();
+        services.AddScoped<Clipboard>();
         return services;
     }
 }

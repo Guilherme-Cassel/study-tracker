@@ -1,0 +1,25 @@
+@implements IDisposable
+@inject Theme Theme
+
+<div class="theme-switch" role="group" aria-label="Tema">
+    @foreach (var choice in Enum.GetValues<ThemeChoice>())
+    {
+        <button type="button" class="@(Theme.Current == choice ? "active" : "")" aria-pressed="@(Theme.Current == choice)"
+                @onclick="() => Theme.SetAsync(choice)">
+            @Theme.Label(choice)
+        </button>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Theme.Changed += OnChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await Theme.LoadAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Theme.Changed -= OnChanged;
+}

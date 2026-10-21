@@ -1,0 +1,22 @@
+<nav class="crumbs" aria-label="Caminho">
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var (label, href) = Items[i];
+        if (i > 0)
+        {
+            <span class="crumb-sep" aria-hidden="true">/</span>
+        }
+        if (href is not null && i < Items.Count - 1)
+        {
+            <a href="@href">@label</a>
+        }
+        else
+        {
+            <span aria-current="page">@label</span>
+        }
+    }
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<(string Label, string? Href)> Items { get; set; } = [];
+}
