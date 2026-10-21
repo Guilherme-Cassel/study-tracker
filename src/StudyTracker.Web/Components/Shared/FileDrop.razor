@@ -1,0 +1,216 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject AssignmentFileWriter Writer
+@inject StatusState State
+@inject Notifier Notifier
+@inject UploadOptions Upload
+
+<div class="drop-host" @ref="_host">
+    @ChildContent(_inputId)
+    <div class="drop-overlay" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 15V4" /><path d="M7 9l5-5 5 5" /><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
+        Soltar para salvar em <b>@TargetLabel</b>
+    </div>
+    <InputFile id="@_inputId" class="drop-input" multiple OnChange="OnFilesAsync" aria-label="@($"Adicionar arquivos em {TargetLabel}")" />
+</div>
+
+@if (_rows.Count > 0)
+{
+    <div class="modal-backdrop" @onclick="Cancel"></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="@($"{_inputId}-title")" @onkeydown="OnKeyDown">
+        <form class="form" @onsubmit="SaveAsync">
+            <h2 id="@($"{_inputId}-title")">Salvar em @TargetLabel <small>@string.Join(" \\ ", Target)</small></h2>
+
+            @foreach (var row in _rows)
+            {
+                <div class="file-row @(row.Problem is not null ? "has-error" : "")">
+                    <span class="file-orig" title="@row.File.Name">@row.File.Name <small>@Size(row.File.Size)</small></span>
+                    <div class="file-fields">
+                        @if (AssignmentId is not null)
+                        {
+                            <select @bind="row.Kind" @bind:after="() => OnKindChanged(row)" aria-label="Tipo do arquivo">
+                                <option value="@FileKind.Brief">Enunciado</option>
+                                <option value="@FileKind.Rubrics">Rubricas</option>
+                                <option value="@FileKind.KeepName">Manter nome</option>
+                            </select>
+                        }
+                        <input @bind="row.Name" @bind:event="oninput" @bind:after="() => Check(row)" aria-label="Nome do arquivo" />
+                    </div>
+                    @if (row.Exists)
+                    {
+                        <label class="check overwrite"><input type="checkbox" @bind="row.Overwrite" /> já existe; substituir</label>
+                    }
+                    @if (row.Problem is not null)
+                    {
+                        <span class="field-error">@row.Problem</span>
+                    }
+                </div>
+            }
+
+            @if (AssignmentId is not null && _createsFolder)
+            {
+                <p class="hint">A pasta @AssignmentId ainda não existe e será criada.</p>
+            }
+
+            <div class="form-actions">
+                <button type="button" class="btn" @onclick="Cancel" disabled="@_saving">Cancelar</button>
+                <button type="submit" class="btn btn-primary" disabled="@(_saving || !CanSave)">
+                    @SaveLabel
+                </button>
+            </div>
+        </form>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string[] Target { get; set; } = [];
+    [Parameter, EditorRequired] public string TargetLabel { get; set; } = "";
+    [Parameter] public string? AssignmentId { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<string> ChildContent { get; set; } = default!;
+
+    private readonly string _inputId = $"drop-{Guid.NewGuid():N}";
+    private ElementReference _host;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _subscription;
+    private List<Row> _rows = [];
+    private bool _saving;
+    private bool _createsFolder;
+
+    private string SaveLabel => _saving ? "Salvando…"
+        : _rows.Count(r => r.WillSave) is var n and > 0 ? $"Salvar {Display.Plural(n, "arquivo", "arquivos")}" : "Salvar";
+
+    private bool CanSave => _rows.Any(r => r.WillSave) && _rows.All(r => r.Problem is null);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Shared/FileDrop.razor.js");
+        _subscription = await _module.InvokeAsync<IJSObjectReference>("attach", _host);
+    }
+
+    private void OnFilesAsync(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount > Upload.MaxFilesPerDrop)
+        {
+            Notifier.Error($"Solte no máximo {Upload.MaxFilesPerDrop} arquivos de uma vez.");
+            return;
+        }
+
+        _rows = e.GetMultipleFiles(Upload.MaxFilesPerDrop).Select(file =>
+        {
+            var kind = AssignmentId is null ? FileKind.KeepName : FileNaming.Guess(file.Name);
+            var row = new Row(file) { Kind = kind, Name = NameFor(kind, file.Name) };
+            return row;
+        }).ToList();
+        _createsFolder = AssignmentId is not null && !Writer.FolderExists(Target);
+        foreach (var row in _rows) Check(row);
+    }
+
+    private string NameFor(FileKind kind, string original) =>
+        AssignmentId is null ? original : FileNaming.NameFor(kind, original, AssignmentId);
+
+    private void OnKindChanged(Row row)
+    {
+        row.Name = NameFor(row.Kind, row.File.Name);
+        Check(row);
+    }
+
+    private void Check(Row row)
+    {
+        row.Problem = null;
+        row.Exists = false;
+        if (row.File.Size > Upload.MaxFileBytes)
+            row.Problem = $"Arquivo maior que {Upload.MaxFileMegabytes} MB.";
+        else if (!FileNaming.IsValid(row.Name))
+            row.Problem = "Nome inválido.";
+        else
+        {
+            try { row.Exists = Writer.Exists(Target, row.Name.Trim()); }
+            catch (ArgumentException) { row.Problem = "Nome inválido."; }
+        }
+
+        foreach (var other in _rows)
+        {
+            if (other.Problem == "Nome repetido nesta lista.") other.Problem = null;
+        }
+        foreach (var group in _rows.Where(r => r.Problem is null).GroupBy(r => r.Name.Trim(), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        {
+            foreach (var dup in group) dup.Problem = "Nome repetido nesta lista.";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        foreach (var row in _rows) Check(row);
+        if (!CanSave) return;
+
+        _saving = true;
+        var saved = new List<string>();
+        var failed = new List<string>();
+        foreach (var row in _rows.Where(r => r.WillSave))
+        {
+            try
+            {
+                await using var stream = row.File.OpenReadStream(Upload.MaxFileBytes);
+                await Writer.SaveAsync(Target, row.Name.Trim(), stream, row.Overwrite);
+                saved.Add(row.Name.Trim());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                failed.Add(row.Name.Trim());
+            }
+        }
+        _saving = false;
+        _rows = [];
+
+        if (saved.Count > 0)
+            Notifier.Info($"{Display.Plural(saved.Count, "arquivo salvo", "arquivos salvos")} em {TargetLabel}: {string.Join(", ", saved)}.");
+        if (failed.Count > 0)
+            Notifier.Error($"Não consegui salvar: {string.Join(", ", failed)}.");
+        await State.RefreshAsync();
+    }
+
+    private void Cancel()
+    {
+        if (!_saving) _rows = [];
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") Cancel();
+    }
+
+    private static string Size(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0} KB",
+        _ => $"{bytes / (1024.0 * 1024):0.#} MB"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_subscription is not null)
+            {
+                await _subscription.InvokeVoidAsync("dispose");
+                await _subscription.DisposeAsync();
+            }
+            if (_module is not null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private sealed class Row(IBrowserFile file)
+    {
+        public IBrowserFile File { get; } = file;
+        public FileKind Kind { get; set; }
+        public string Name { get; set; } = "";
+        public bool Exists { get; set; }
+        public bool Overwrite { get; set; }
+        public string? Problem { get; set; }
+        public bool WillSave => Problem is null && (!Exists || Overwrite);
+    }
+}

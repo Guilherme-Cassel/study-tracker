@@ -429,3 +429,30 @@ a.tr:hover { background: var(--surface-2); text-decoration: none; }
     .form .row2 { grid-template-columns: 1fr; }
     .modal { padding: 16px; }
 }
+
+/* ---------- arquivos ---------- */
+
+.drop-host { position: relative; }
+.drop-input { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); opacity: 0; pointer-events: none; z-index: 3; cursor: copy; }
+.drop-host.dragging .drop-input { pointer-events: auto; }
+.drop-overlay {
+    display: none; position: absolute; inset: -12px; z-index: 2;
+    align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 12px;
+    border: 2px dashed var(--accent); border-radius: 10px; background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+    color: var(--accent); font-size: 15px;
+}
+.drop-overlay svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.drop-host.dragging .drop-overlay { display: flex; }
+label.btn { cursor: pointer; }
+
+.file-row { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+.file-row:first-of-type { border-top: 0; padding-top: 0; }
+.file-orig { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.file-orig small { margin-left: 6px; }
+.file-fields { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; }
+.file-fields:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.overwrite { font-size: 13px; color: var(--soon-fg); }
+
+@media (max-width: 560px) {
+    .file-fields { grid-template-columns: minmax(0, 1fr); }
+}

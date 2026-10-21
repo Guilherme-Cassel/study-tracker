@@ -17,6 +17,8 @@ builder.Services.AddSingleton(new StudyFolder(
 builder.Services.AddSingleton<StatusDataStore>();
 builder.Services.AddSingleton<FolderScanner>();
 builder.Services.AddSingleton<ExplorerLauncher>();
+builder.Services.AddSingleton<AssignmentFileWriter>();
+builder.Services.AddSingleton(UploadOptions.From(builder.Configuration));
 builder.Services.AddSingleton<StatusState>();
 builder.Services.AddHostedService<FolderMonitor>();
 builder.Services.AddSingleton(TimeProvider.System);

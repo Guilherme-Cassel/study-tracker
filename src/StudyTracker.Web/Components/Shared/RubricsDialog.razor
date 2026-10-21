@@ -1,0 +1,77 @@
+@inject AssignmentFileWriter Writer
+@inject StatusState State
+@inject Notifier Notifier
+
+<div class="modal-backdrop" @onclick="CancelAsync"></div>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="rubrics-title" @onkeydown="OnKeyDown">
+    <form class="form" @onsubmit="SaveAsync">
+        <h2 id="rubrics-title">Colar rubricas <small>@CourseCode @AssignmentId · salva como @FileName</small></h2>
+        <p class="hint">Cole só o texto das células escuras do Moodle, uma rubrica por linha. A frase de pontuação embaixo de cada uma não entra.</p>
+        <label>
+            Rubricas
+            <textarea @ref="_text" rows="10" @bind="_value" @bind:event="oninput"></textarea>
+        </label>
+        @if (_exists)
+        {
+            <label class="check overwrite"><input type="checkbox" @bind="_overwrite" /> @FileName já existe; substituir</label>
+        }
+        <div class="form-actions">
+            <button type="button" class="btn" @onclick="CancelAsync" disabled="@_saving">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_saving || string.IsNullOrWhiteSpace(_value) || (_exists && !_overwrite))">
+                @(_saving ? "Salvando…" : "Salvar")
+            </button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string[] Target { get; set; } = [];
+    [Parameter, EditorRequired] public string CourseCode { get; set; } = "";
+    [Parameter, EditorRequired] public string AssignmentId { get; set; } = "";
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _value = "";
+    private bool _exists;
+    private bool _overwrite;
+    private bool _saving;
+    private ElementReference _text;
+
+    private string FileName => FileNaming.RubricsFileName(AssignmentId);
+
+    protected override void OnInitialized() => _exists = Writer.Exists(Target, FileName);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await _text.FocusAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_value) || (_exists && !_overwrite)) return;
+        _saving = true;
+        try
+        {
+            await Writer.SaveTextAsync(Target, FileName, _value, _overwrite);
+            Notifier.Info($"{FileName} salvo em {CourseCode} / {AssignmentId}.");
+            await State.RefreshAsync();
+            await OnClose.InvokeAsync();
+        }
+        catch (TargetExistsException)
+        {
+            _exists = true;
+            Notifier.Error($"{FileName} apareceu na pasta enquanto você colava. Marque substituir para gravar por cima.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Notifier.Error($"Não consegui salvar {FileName}. Confira se o Google Drive está aberto.");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private Task CancelAsync() => _saving ? Task.CompletedTask : OnClose.InvokeAsync();
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CancelAsync() : Task.CompletedTask;
+}

@@ -25,6 +25,7 @@
         <PageTitle>@course.Code · Study Tracker</PageTitle>
 
         <p class="crumbs"><a href="disciplinas">Disciplinas</a> / @group.Title</p>
+        <FileDrop Target="[block.Folder, course.Folder]" TargetLabel="@($"pasta da {course.Code}")" Context="courseInputId">
         <header class="page-head course-head">
             <span class="code-chip big">@course.Code</span>
             <div>
@@ -46,6 +47,7 @@
                 <span class="muted head-action">pasta da disciplina não encontrada</span>
             }
         </header>
+        </FileDrop>
         <StatusBar Assignments="course.Assignments" />
 
         <ol class="works">
@@ -54,6 +56,7 @@
                 var open = a.Status != AssignmentStatus.Submitted;
                 var folder = Result!.FolderOf(course, a);
                 <li class="card work st-@a.Status.Key()" id="@a.Id">
+                    <FileDrop Target="[block.Folder, course.Folder, a.Id]" TargetLabel="@($"{course.Code} / {a.Id}")" AssignmentId="@a.Id" Context="inputId">
                     <div class="work-head">
                         <h2>@a.Id</h2>
                         <StatusPill Status="a.Status" />
@@ -62,6 +65,14 @@
                             @if (folder.Folder.Exists)
                             {
                                 <OpenFolderButton Segments="[block.Folder, course.Folder, a.Id]" />
+                            }
+                            <label class="btn btn-sm" for="@inputId" title="Ou arraste arquivos para cima deste trabalho">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4" /><path d="M7 9l5-5 5 5" /><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
+                                Arquivos
+                            </label>
+                            @if (open)
+                            {
+                                <button type="button" class="btn btn-sm" @onclick="() => _rubrics = (course, a)">Colar rubricas</button>
                             }
                             <button type="button" class="btn btn-sm" @onclick="() => _editing = (course, a)">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M14 6l4 4" /></svg>
@@ -135,11 +146,18 @@
                             </ul>
                         </details>
                     }
+                    </FileDrop>
                 </li>
             }
         </ol>
     }
 </StatusGate>
+
+@if (_rubrics is { } rubrics)
+{
+    <RubricsDialog Target="[Result!.Data!.CurrentBlock.Folder, rubrics.Course.Folder, rubrics.Assignment.Id]"
+                   CourseCode="@rubrics.Course.Code" AssignmentId="@rubrics.Assignment.Id" OnClose="() => _rubrics = null" />
+}
 
 @if (_editing is { } editing)
 {
@@ -150,6 +168,7 @@
     [Parameter] public string Code { get; set; } = "";
 
     private (Course Course, Assignment Assignment)? _editing;
+    private (Course Course, Assignment Assignment)? _rubrics;
     private Assignment? _applying;
 
     private async Task ApplyAsync(Course course, Assignment assignment)
