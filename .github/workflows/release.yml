@@ -1,0 +1,57 @@
+name: Release
+
+# Pushing a tag like v1.2.0 tests the code, publishes a self-contained build and attaches it to a GitHub release.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Read version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Tag must look like v1.2.3, got ${{ github.ref_name }}" }
+          "number=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish
+        shell: pwsh
+        run: >
+          dotnet publish src/StudyTracker.Desktop
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:Version=${{ steps.version.outputs.number }}
+          --output publish
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $zip = "StudyTracker-${{ steps.version.outputs.number }}-win-x64.zip"
+          Copy-Item src/StudyTracker.Desktop/appsettings.Local.example.json publish/
+          Compress-Archive -Path publish/* -DestinationPath $zip
+          "ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Create release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create '${{ github.ref_name }}' $env:ZIP
+          --title 'Study Tracker ${{ steps.version.outputs.number }}'
+          --generate-notes

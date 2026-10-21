@@ -37,6 +37,22 @@ This publishes the app to `%LOCALAPPDATA%\StudyTracker\app` and creates **Study 
 
 On the first install, settings are copied to `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json`. Set the folder path there. If the path is missing, the app says so when it starts.
 
+### From a release
+
+Each [release](../../releases) has a self-contained `StudyTracker-<version>-win-x64.zip` (no .NET install needed). Extract it anywhere, create `%LOCALAPPDATA%\StudyTracker\appsettings.Local.json` from the `appsettings.Local.example.json` inside the zip, and run `StudyTracker.exe`. The build is not code-signed, so Windows SmartScreen asks for confirmation the first time.
+
+## Releases
+
+- **CI** (`.github/workflows/ci.yml`) builds and runs the tests on every push and pull request to `main`.
+- **Release** (`.github/workflows/release.yml`) runs when a version tag is pushed: it tests, publishes a self-contained win-x64 build with that version and attaches the zip to a GitHub release with generated notes.
+
+```
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The version shows at the bottom of the sidebar: `v1.1.0` for releases, `<git describe>-local` for `scripts\install.ps1` builds and `0.0.0-dev` when running from source.
+
 ## Settings
 
 | Key | Default | Meaning |
