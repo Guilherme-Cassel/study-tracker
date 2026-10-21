@@ -5,7 +5,7 @@
 
 <StatusGate Result="Result" OnRetry="LoadAsync">
     @{
-        var block = context.CurrentBlock;
+        var block = context.DefaultBlock!;
         var counts = block.CountByStatus();
         var filter = Display.ParseKey(Status);
         var items = block.Items()
@@ -47,7 +47,7 @@
             @foreach (var item in items)
             {
                 var a = item.Assignment;
-                <a class="tr" role="row" href="@Display.AssignmentUrl(item.Course, a)">
+                <a class="tr" role="row" href="@Display.AssignmentUrl(block, item.Course, a)">
                     <span role="cell" class="td-work">
                         <b>@item.Course.Code @a.Id</b>
                         <small>@item.Course.Name</small>

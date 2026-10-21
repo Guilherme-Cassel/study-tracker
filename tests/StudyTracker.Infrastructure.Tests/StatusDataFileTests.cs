@@ -22,7 +22,7 @@ public class StatusDataFileTests
 
         Assert.Equal(new DateOnly(2026, 3, 2), data.UpdatedOn);
         Assert.Equal(3, data.History.Count);
-        var current = data.CurrentBlock;
+        var current = data.DefaultBlock!;
         Assert.Equal("Bloco Exemplo", current.Name);
         var course = current.Groups![0].Courses[0];
         Assert.Equal("XY1", course.Code);
@@ -39,7 +39,7 @@ public class StatusDataFileTests
     public void Format_KeepsUnknownFields()
     {
         var file = StatusDataFile.Parse(Fixture.SampleText);
-        var at = file.Data.CurrentBlock.Groups![0].Courses[0].Assignments[3];
+        var at = file.Data.DefaultBlock!.Groups![0].Courses[0].Assignments[3];
 
         at.NextStep = "Outro passo.";
         var text = StatusDataFile.Format(file.Data, file);
@@ -52,7 +52,7 @@ public class StatusDataFileTests
     public void Format_KeepsExistingKeyOrderAndAppendsNewKeys()
     {
         var file = StatusDataFile.Parse(Fixture.SampleText);
-        var tp3 = file.Data.CurrentBlock.Groups![0].Courses[0].Assignments[2];
+        var tp3 = file.Data.DefaultBlock!.Groups![0].Courses[0].Assignments[2];
 
         tp3.Feedback = "Recebida.";
         var reparsed = StatusDataFile.Format(file.Data, file);
@@ -69,7 +69,7 @@ public class StatusDataFileTests
     public void Format_DropsFalseFlagsAndNullFields()
     {
         var file = StatusDataFile.Parse(Fixture.SampleText);
-        var tp3 = file.Data.CurrentBlock.Groups![0].Courses[0].Assignments[2];
+        var tp3 = file.Data.DefaultBlock!.Groups![0].Courses[0].Assignments[2];
 
         tp3.FolderMissing = false;
         tp3.Notes = null;

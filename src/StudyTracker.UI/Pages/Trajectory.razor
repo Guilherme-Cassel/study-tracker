@@ -62,8 +62,8 @@
                         @foreach (var (_, course) in block.Courses())
                         {
                             <li>
-                                <a href="@Display.CourseUrl(course)" class="code-chip">@course.Code</a>
-                                <a href="@Display.CourseUrl(course)" class="tl-name">@course.Name</a>
+                                <a href="@Display.CourseUrl(block, course)" class="code-chip">@course.Code</a>
+                                <a href="@Display.CourseUrl(block, course)" class="tl-name">@course.Name</a>
                                 <span class="cc-works">
                                     @foreach (var a in course.Assignments)
                                     {

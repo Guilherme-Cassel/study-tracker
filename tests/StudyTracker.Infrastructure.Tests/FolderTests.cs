@@ -85,12 +85,12 @@ public sealed class FolderTests : IDisposable
         var dr3 = block.Groups![0].Courses[0];
         var scan = new FolderScanner(_folder).Scan(block);
 
-        var folder = scan.For(dr3, dr3.Assignments[0]);
+        var folder = scan.For(block, dr3, dr3.Assignments[0]);
         Assert.True(folder.Exists);
         Assert.Equal(["src/", "Enunciado TP1.docx", "Rubricas TP1.txt"], folder.Entries.Select(e => e.Name + (e.IsDirectory ? "/" : "")));
-        Assert.False(scan.For(dr3, dr3.Assignments[1]).Exists);
-        Assert.True(scan.CourseExists(dr3));
-        Assert.False(scan.CourseExists(block.Groups[0].Courses[1]));
+        Assert.False(scan.For(block, dr3, dr3.Assignments[1]).Exists);
+        Assert.True(scan.CourseExists(block, dr3));
+        Assert.False(scan.CourseExists(block, block.Groups[0].Courses[1]));
     }
 
     [Fact]
@@ -102,7 +102,32 @@ public sealed class FolderTests : IDisposable
 
         var scan = new FolderScanner(_folder).Scan(block);
 
-        Assert.False(scan.CourseExists(block.Groups![0].Courses[0]));
+        Assert.False(scan.CourseExists(block, block.Groups![0].Courses[0]));
+    }
+
+    [Fact]
+    public void Scan_CoversEveryBlock_AndOnlyChecksCourseFoldersOfFinishedOnes()
+    {
+        Make("Bloco [26E3-26E4]", "DR3 - Disciplina [26E4]", "TP1");
+        Make("Antigo [25E3-25E4]", "DR3 - Outra [25E4]", "TP1");
+        var current = NewBlock();
+        var old = new Block
+        {
+            Name = "Antigo", Code = "25E3-25E4", Folder = "Antigo [25E3-25E4]",
+            CompletedCourses =
+            [
+                new CompletedCourse { Code = "DR3", Name = "Outra", Folder = "DR3 - Outra [25E4]", AssignmentIds = ["TP1"] },
+                new CompletedCourse { Code = "DR4", Name = "Sem pasta", Folder = "DR4 - Sem pasta [25E4]", AssignmentIds = ["TP1"] }
+            ]
+        };
+        var dr3 = current.Groups![0].Courses[0];
+
+        var scan = new FolderScanner(_folder).Scan([current, old]);
+
+        Assert.True(scan.For(current, dr3, dr3.Assignments[0]).Exists);
+        Assert.False(scan.For(old, dr3, dr3.Assignments[0]).Exists);
+        Assert.True(scan.CourseExists(old, old.CompletedCourses[0]));
+        Assert.False(scan.CourseExists(old, old.CompletedCourses[1]));
     }
 
     [Fact]

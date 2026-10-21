@@ -80,6 +80,7 @@
 </div>
 
 @code {
+    [Parameter, EditorRequired] public Block Block { get; set; } = default!;
     [Parameter, EditorRequired] public Course Course { get; set; } = default!;
     [Parameter, EditorRequired] public Assignment Assignment { get; set; } = default!;
     [Parameter] public EventCallback OnClose { get; set; }
@@ -140,7 +141,7 @@
 
         var history = string.IsNullOrWhiteSpace(_history) ? Display.HistoryText(Course, Assignment, _original, edit) : _history.Trim();
         _saving = true;
-        var outcome = await State.SaveEditAsync(Course.Code, Assignment.Id, _original, edit, history);
+        var outcome = await State.SaveEditAsync(AssignmentKey.Of(Block, Course, Assignment), _original, edit, history);
         _saving = false;
 
         switch (outcome.Status)

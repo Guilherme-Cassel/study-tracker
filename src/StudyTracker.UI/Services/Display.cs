@@ -72,9 +72,15 @@ public static class Display
         };
     }
 
-    public static string CourseUrl(Course course) => $"/disciplinas/{Uri.EscapeDataString(course.Code)}";
+    public static string BlockUrl(Block block) => $"/blocos/{Uri.EscapeDataString(block.Code)}";
 
-    public static string AssignmentUrl(Course course, Assignment assignment) => $"{CourseUrl(course)}#{assignment.Id}";
+    public static string BlockAssignmentsUrl(Block block, AssignmentStatus? status = null) =>
+        $"{BlockUrl(block)}/trabalhos{(status is { } s ? "?status=" + s.Key() : "")}";
+
+    public static string CourseUrl(Block block, Course course) => $"{BlockUrl(block)}/{Uri.EscapeDataString(course.Code)}";
+
+    public static string AssignmentUrl(Block block, Course course, Assignment assignment) =>
+        $"{CourseUrl(block, course)}/{Uri.EscapeDataString(assignment.Id)}";
 
     public static string Label(this Stage stage) => stage switch
     {

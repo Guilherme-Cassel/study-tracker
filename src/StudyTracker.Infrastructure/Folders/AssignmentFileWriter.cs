@@ -8,8 +8,8 @@ public sealed class TargetExistsException(string path) : IOException($"File alre
     public string Path { get; } = path;
 }
 
-// Saves files into a course or assignment folder. Only the last folder of the target (the assignment's "TPn")
-// is ever created; the block and course folders must already exist.
+// Saves and reads files in a course or assignment folder. It never creates folders: the block, course and
+// assignment folders are created by the assistant following the study guide, so a missing one is reported.
 public sealed class AssignmentFileWriter(StudyFolder folder)
 {
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
@@ -29,17 +29,20 @@ public sealed class AssignmentFileWriter(StudyFolder folder)
         }
     }
 
+    public string FolderPath(IReadOnlyList<string> target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return folder.Resolve([.. target]);
+    }
+
     public async Task<string> SaveAsync(IReadOnlyList<string> target, string fileName, Stream content, bool overwrite,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(content);
         var destination = PathFor(target, fileName);
         var directory = Path.GetDirectoryName(destination)!;
-
-        var parent = Path.GetDirectoryName(directory)!;
-        if (!Directory.Exists(parent))
-            throw new DirectoryNotFoundException($"Folder not found: '{parent}'.");
-        Directory.CreateDirectory(directory);
+        if (!Directory.Exists(directory))
+            throw new DirectoryNotFoundException($"Folder not found: '{directory}'.");
 
         var temp = Path.Combine(directory, $".{Guid.NewGuid():N}.tmp");
         try
@@ -74,6 +77,24 @@ public sealed class AssignmentFileWriter(StudyFolder folder)
         ArgumentNullException.ThrowIfNull(text);
         var normalized = text.Replace("\r\n", "\n").TrimEnd() + "\n";
         return SaveAsync(target, fileName, new MemoryStream(Utf8NoBom.GetBytes(normalized)), overwrite, cancellationToken);
+    }
+
+    // Reads a text file (brief, rubrics) to show it on screen; null when it is missing or larger than maxBytes.
+    public async Task<string?> ReadTextAsync(IReadOnlyList<string> target, string fileName, int maxBytes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBytes);
+        var path = PathFor(target, fileName);
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length > maxBytes) return null;
+            return await File.ReadAllTextAsync(path, Encoding.UTF8, cancellationToken);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private string PathFor(IReadOnlyList<string> target, string fileName)

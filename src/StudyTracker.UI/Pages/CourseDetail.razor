@@ -4,7 +4,7 @@
 
 <StatusGate Result="Result" OnRetry="LoadAsync">
     @{
-        var block = context.CurrentBlock;
+        var block = context.DefaultBlock!;
         var found = block.FindCourse(Code);
     }
 
@@ -20,7 +20,7 @@
     {
         var (group, course) = found;
         var progress = course.Progress();
-        var courseFolderExists = Result!.Folders.CourseExists(course);
+        var courseFolderExists = Result!.Folders.CourseExists(block, course);
 
         <PageTitle>@course.Code · Study Tracker</PageTitle>
 
@@ -54,7 +54,7 @@
             @foreach (var a in course.Assignments)
             {
                 var open = a.Status != AssignmentStatus.Submitted;
-                var folder = Result!.FolderOf(course, a);
+                var folder = Result!.FolderOf(block, course, a);
                 <li class="card work st-@a.Status.Key()" id="@a.Id">
                     <FileDrop Target="[block.Folder, course.Folder, a.Id]" TargetLabel="@($"{course.Code} / {a.Id}")" AssignmentId="@a.Id" Context="inputId">
                     <div class="work-head">
@@ -155,13 +155,13 @@
 
 @if (_rubrics is { } rubrics)
 {
-    <RubricsDialog Target="[Result!.Data!.CurrentBlock.Folder, rubrics.Course.Folder, rubrics.Assignment.Id]"
+    <RubricsDialog Target="[Result!.Data!.DefaultBlock!.Folder, rubrics.Course.Folder, rubrics.Assignment.Id]"
                    CourseCode="@rubrics.Course.Code" AssignmentId="@rubrics.Assignment.Id" OnClose="() => _rubrics = null" />
 }
 
 @if (_editing is { } editing)
 {
-    <AssignmentEditor Course="editing.Course" Assignment="editing.Assignment" OnClose="() => _editing = null" />
+    <AssignmentEditor Block="Result!.Data!.DefaultBlock!" Course="editing.Course" Assignment="editing.Assignment" OnClose="() => _editing = null" />
 }
 
 @code {
@@ -174,7 +174,7 @@
     private async Task ApplyAsync(Course course, Assignment assignment)
     {
         _applying = assignment;
-        var outcome = await State.ApplyFolderSuggestionAsync(course.Code, assignment.Id);
+        var outcome = await State.ApplyFolderSuggestionAsync(AssignmentKey.Of(Result!.Data!.DefaultBlock!, course, assignment));
         _applying = null;
 
         switch (outcome.Status)

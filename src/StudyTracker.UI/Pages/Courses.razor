@@ -5,7 +5,7 @@
 
 <StatusGate Result="Result" OnRetry="LoadAsync">
     @{
-        var block = context.CurrentBlock;
+        var block = context.DefaultBlock!;
     }
 
     <header class="page-head">
@@ -21,7 +21,7 @@
                 @foreach (var course in group.Courses)
                 {
                     var progress = course.Progress();
-                    <a class="card course-card" href="@Display.CourseUrl(course)">
+                    <a class="card course-card" href="@Display.CourseUrl(block, course)">
                         <span class="cc-top">
                             <span class="code-chip">@course.Code</span>
                             <span class="cc-count">@progress.Submitted de @progress.Total entregues</span>

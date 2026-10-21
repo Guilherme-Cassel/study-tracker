@@ -25,5 +25,8 @@ public sealed class Block
 
     [JsonPropertyName("concluido")] public List<CompletedCourse>? CompletedCourses { get; set; }
 
+    // A block with "grupos" has every course and assignment; a finished block only lists what was submitted.
+    [JsonIgnore] public bool IsDetailed => Groups is not null;
+
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }

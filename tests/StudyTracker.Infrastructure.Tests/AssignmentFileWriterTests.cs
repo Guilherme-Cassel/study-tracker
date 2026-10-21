@@ -12,7 +12,7 @@ public sealed class AssignmentFileWriterTests : IDisposable
 
     public AssignmentFileWriterTests()
     {
-        Directory.CreateDirectory(Path.Combine(_root, "Bloco", "DR3"));
+        Directory.CreateDirectory(Path.Combine(_root, "Bloco", "DR3", "TP2"));
         _writer = new AssignmentFileWriter(new StudyFolder(_root));
     }
 
@@ -23,17 +23,40 @@ public sealed class AssignmentFileWriterTests : IDisposable
     private string PathOf(params string[] parts) => Path.Combine([_root, .. parts]);
 
     [Fact]
-    public async Task Save_CreatesTheAssignmentFolderAndWritesTheFile()
+    public async Task Save_WritesTheFileIntoTheAssignmentFolder()
     {
-        Assert.False(_writer.FolderExists(_tp2));
+        Assert.True(_writer.FolderExists(_tp2));
 
         var path = await _writer.SaveAsync(_tp2, "Enunciado TP2.docx", Content("conteúdo"), overwrite: false);
 
         Assert.Equal(PathOf("Bloco", "DR3", "TP2", "Enunciado TP2.docx"), path);
         Assert.Equal("conteúdo", await File.ReadAllTextAsync(path));
-        Assert.True(_writer.FolderExists(_tp2));
         Assert.True(_writer.Exists(_tp2, "Enunciado TP2.docx"));
         Assert.Single(Directory.GetFiles(PathOf("Bloco", "DR3", "TP2")));
+    }
+
+    [Fact]
+    public async Task Save_NeverCreatesTheAssignmentFolder()
+    {
+        string[] tp3 = ["Bloco", "DR3", "TP3"];
+        Assert.False(_writer.FolderExists(tp3));
+
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => _writer.SaveAsync(tp3, "a.txt", Content("x"), overwrite: false));
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => _writer.SaveTextAsync(tp3, "Rubricas TP3.txt", "x", overwrite: false));
+
+        Assert.False(Directory.Exists(PathOf("Bloco", "DR3", "TP3")));
+        Assert.Equal(PathOf("Bloco", "DR3", "TP3"), _writer.FolderPath(tp3));
+    }
+
+    [Fact]
+    public async Task ReadText_ReturnsTheFileOrNull()
+    {
+        await _writer.SaveTextAsync(_tp2, "Rubricas TP2.txt", "1. Uma\r\n2. Duas", overwrite: false);
+
+        Assert.Equal("1. Uma\n2. Duas\n", await _writer.ReadTextAsync(_tp2, "Rubricas TP2.txt", 1024));
+        Assert.Null(await _writer.ReadTextAsync(_tp2, "Rubricas TP2.txt", 4));
+        Assert.Null(await _writer.ReadTextAsync(_tp2, "Rubricas TP9.txt", 1024));
+        Assert.Null(await _writer.ReadTextAsync(["Bloco", "DR3", "TP3"], "Rubricas TP3.txt", 1024));
     }
 
     [Fact]

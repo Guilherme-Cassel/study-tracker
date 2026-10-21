@@ -27,22 +27,41 @@ public class StatusDataTests
     }
 
     [Fact]
-    public void CurrentBlock_ReturnsTheBlockMarkedAsCurrent()
+    public void DefaultBlock_PrefersTheBlockMarkedAsCurrent()
     {
         var data = new StatusData { Blocks = [NewBlock("Antigo", false), NewBlock("Atual", true)] };
 
-        Assert.Equal("Atual", data.CurrentBlock.Name);
+        Assert.Equal("Atual", data.DefaultBlock!.Name);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(2)]
-    public void CurrentBlock_RequiresExactlyOneCurrentBlock(int currentCount)
+    [Fact]
+    public void DefaultBlock_FallsBackToTheFirstDetailedBlock_ThenTheFirstOfAll()
     {
-        var blocks = Enumerable.Range(0, 3).Select(i => NewBlock($"B{i}", i < currentCount)).ToList();
-        var data = new StatusData { Blocks = blocks };
+        var summary = NewBlock("Resumido", false);
+        var detailed = NewBlock("Detalhado", false);
+        detailed.Groups = [];
 
-        Assert.Throws<InvalidOperationException>(() => data.CurrentBlock);
+        Assert.Equal("Detalhado", new StatusData { Blocks = [summary, detailed] }.DefaultBlock!.Name);
+        Assert.Equal("Resumido", new StatusData { Blocks = [summary] }.DefaultBlock!.Name);
+        Assert.Null(new StatusData().DefaultBlock);
+    }
+
+    [Fact]
+    public void DefaultBlock_TakesTheFirstWhenMoreThanOneIsMarked()
+    {
+        var data = new StatusData { Blocks = [NewBlock("B0", true), NewBlock("B1", true)] };
+
+        Assert.Equal("B0", data.DefaultBlock!.Name);
+    }
+
+    [Fact]
+    public void FindBlock_IgnoresCase()
+    {
+        var block = NewBlock("Atual", true);
+        var data = new StatusData { Blocks = [block] };
+
+        Assert.Same(block, data.FindBlock("26e1-26E2"));
+        Assert.Null(data.FindBlock("27E1-27E2"));
     }
 
     [Theory]

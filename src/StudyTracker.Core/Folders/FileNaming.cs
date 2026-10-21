@@ -23,6 +23,9 @@ public static class FileNaming
 
     public static string RubricsFileName(string assignmentId) => $"Rubricas {assignmentId}.txt";
 
+    // A brief pasted as text (the Moodle one is usually a .docx dropped on the assignment).
+    public static string BriefTextFileName(string assignmentId) => $"Enunciado {assignmentId}.md";
+
     public static FileKind Guess(string originalName)
     {
         ArgumentNullException.ThrowIfNull(originalName);

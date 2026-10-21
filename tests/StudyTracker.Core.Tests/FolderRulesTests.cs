@@ -160,14 +160,31 @@ public class FolderRulesTests
     [Fact]
     public void Scan_SignatureChangesWithFolderContents()
     {
+        var block = new Block { Name = "B", Code = "26E3-26E4", Folder = "B" };
         var course = new Course { Code = "DR3", Name = "X", Folder = "X", Assignments = [new Assignment { Id = "TP1", Status = AssignmentStatus.Ready }] };
         FolderScan Scan(params FolderEntry[] entries) =>
-            new(new Dictionary<(string, string), AssignmentFolder> { [("DR3", "TP1")] = Folder(entries) }, ["DR3"]);
+            new(new Dictionary<AssignmentKey, AssignmentFolder> { [AssignmentKey.Of(block, course, course.Assignments[0])] = Folder(entries) },
+                [new CourseKey(block.Code, course.Code)]);
 
         Assert.Equal(Scan(File("a.txt")).Signature, Scan(File("a.txt")).Signature);
         Assert.NotEqual(Scan(File("a.txt")).Signature, Scan(File("a.txt"), File("b.txt")).Signature);
-        Assert.True(Scan().CourseExists(course));
-        Assert.True(Scan().For(course, course.Assignments[0]).Exists);
-        Assert.False(FolderScan.Empty.For(course, course.Assignments[0]).Exists);
+        Assert.True(Scan().CourseExists(block, course));
+        Assert.True(Scan().For(block, course, course.Assignments[0]).Exists);
+        Assert.False(FolderScan.Empty.For(block, course, course.Assignments[0]).Exists);
+    }
+
+    [Fact]
+    public void Scan_KeepsBlocksApartWhenCourseCodesRepeat()
+    {
+        var older = new Block { Name = "Antigo", Code = "25E3-25E4", Folder = "Antigo" };
+        var newer = new Block { Name = "Atual", Code = "26E3-26E4", Folder = "Atual" };
+        var course = new Course { Code = "DR1", Name = "X", Folder = "X", Assignments = [new Assignment { Id = "TP1", Status = AssignmentStatus.Ready }] };
+        var scan = new FolderScan(
+            new Dictionary<AssignmentKey, AssignmentFolder> { [AssignmentKey.Of(newer, course, course.Assignments[0])] = Folder(File("a.txt")) },
+            [new CourseKey(newer.Code, course.Code)]);
+
+        Assert.True(scan.For(newer, course, course.Assignments[0]).Exists);
+        Assert.False(scan.For(older, course, course.Assignments[0]).Exists);
+        Assert.False(scan.CourseExists(older, course));
     }
 }

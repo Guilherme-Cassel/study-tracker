@@ -81,7 +81,7 @@ public sealed class StatusDataStoreTests : IDisposable
 
         var snapshot = await _store.LoadAsync();
 
-        Assert.Equal("Bloco Exemplo", snapshot.Data.CurrentBlock.Name);
+        Assert.Equal("Bloco Exemplo", snapshot.Data.DefaultBlock!.Name);
     }
 
     [Fact]

@@ -23,9 +23,9 @@ public sealed record StatusLoadResult(
     StatusProblem? Problem = null,
     string? Detail = null)
 {
-    public AssignmentFolderInfo FolderOf(Course course, Assignment assignment)
+    public AssignmentFolderInfo FolderOf(Block block, Course course, Assignment assignment)
     {
-        var folder = Folders.For(course, assignment);
+        var folder = Folders.For(block, course, assignment);
         var files = FolderRules.Detect(course.Code, assignment.Id, folder.Entries, DeliverablePrefix);
         return new AssignmentFolderInfo(folder, files, FolderRules.Suggest(assignment, folder, files));
     }
@@ -35,7 +35,7 @@ public sealed record StatusLoadResult(
 }
 
 // Keeps the last data file snapshot and folder scan in memory. Pages read from here; FolderMonitor
-// and the browser focus hook call RefreshAsync, and Changed tells open pages to render again.
+// and the window focus hook call RefreshAsync, and Changed tells open pages to render again.
 public sealed partial class StatusState(
     StudyFolder folder, StatusDataStore store, FolderScanner scanner, TimeProvider time, ILogger<StatusState> logger)
 {
@@ -93,12 +93,12 @@ public sealed partial class StatusState(
             }
 
             var data = _snapshot.Data;
-            if (data.Blocks.Count(b => b.IsCurrent) != 1)
-                return Fail(StatusProblem.InvalidFile, "Exactly one block must be marked as current (\"atual\": true).");
+            if (data.Blocks.Count == 0)
+                return Fail(StatusProblem.InvalidFile, "The file has no blocks (\"blocos\").");
 
             var scan = !reloaded && !rescan && _current is { Data: not null } previous
                 ? previous.Folders
-                : await scanner.ScanAsync(data.CurrentBlock, cancellationToken);
+                : await scanner.ScanAsync(data.Blocks, cancellationToken);
 
             return new StatusLoadResult(data, scan, folder.DeliverablePrefix, _snapshot.Version);
         }

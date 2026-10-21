@@ -6,13 +6,13 @@
 <StatusGate Result="Result" OnRetry="LoadAsync">
     @{
         var data = context;
-        var block = data.CurrentBlock;
+        var block = data.DefaultBlock!;
         var counts = block.CountByStatus();
         var next = block.NextSteps();
         var deadlines = block.UpcomingDeadlines();
         var gaps = block.MissingContext();
         var folderNotes = block.Items()
-            .Select(i => (Item: i, Folder: Result!.FolderOf(i.Course, i.Assignment)))
+            .Select(i => (Item: i, Folder: Result!.FolderOf(block, i.Course, i.Assignment)))
             .Where(x => x.Folder.Suggestion is not null || x.Folder.Files.MisnamedDeliverables.Count > 0)
             .ToList();
     }
@@ -51,7 +51,7 @@
                     @foreach (var item in next.Take(6))
                     {
                         <li>
-                            <a class="row" href="@Display.AssignmentUrl(item.Course, item.Assignment)">
+                            <a class="row" href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">
                                 <span class="row-id">@item.Course.Code <b>@item.Assignment.Id</b></span>
                                 <span class="row-body">
                                     <StatusPill Status="item.Assignment.Status" />
@@ -74,7 +74,7 @@
                         @foreach (var (item, folder) in folderNotes)
                         {
                             <li>
-                                <a class="row-note" href="@Display.AssignmentUrl(item.Course, item.Assignment)">
+                                <a class="row-note" href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">
                                     <b>@item.Course.Code @item.Assignment.Id</b>
                                     <span>
                                         @if (folder.Suggestion is { } suggestion)
@@ -110,7 +110,7 @@
                                     <b>@due.Day.ToString("00")</b>
                                     <small>@Display.MonthShort(due)</small>
                                 </span>
-                                <a href="@Display.AssignmentUrl(item.Course, item.Assignment)">@item.Course.Code @item.Assignment.Id</a>
+                                <a href="@Display.AssignmentUrl(block, item.Course, item.Assignment)">@item.Course.Code @item.Assignment.Id</a>
                                 <span class="dl-left">@Display.DueText(due, Today)</span>
                             </li>
                         }
@@ -131,7 +131,7 @@
                         @foreach (var gap in gaps)
                         {
                             <li>
-                                <a href="@Display.CourseUrl(gap.Course)" class="code-chip">@gap.Course.Code</a>
+                                <a href="@Display.CourseUrl(block, gap.Course)" class="code-chip">@gap.Course.Code</a>
                                 <span>@string.Join(", ", gap.Assignments.Select(a => a.Id))</span>
                             </li>
                         }
@@ -151,7 +151,7 @@
             {
                 var progress = course.Progress();
                 <li>
-                    <a href="@Display.CourseUrl(course)">
+                    <a href="@Display.CourseUrl(block, course)">
                         <span class="code-chip">@course.Code</span>
                         <span class="cs-name">@course.Name</span>
                         <StatusBar Assignments="course.Assignments" />

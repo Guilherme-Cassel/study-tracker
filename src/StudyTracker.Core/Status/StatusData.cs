@@ -21,10 +21,15 @@ public sealed class StatusData
 
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 
+    // The block the app opens first: the one marked "atual", else the first one with course data, else the first.
     [JsonIgnore]
-    public Block CurrentBlock =>
-        Blocks.SingleOrDefault(b => b.IsCurrent)
-        ?? throw new InvalidOperationException("Exactly one block must be marked as current.");
+    public Block? DefaultBlock =>
+        Blocks.FirstOrDefault(b => b.IsCurrent)
+        ?? Blocks.FirstOrDefault(b => b.IsDetailed)
+        ?? Blocks.FirstOrDefault();
+
+    public Block? FindBlock(string code) =>
+        Blocks.FirstOrDefault(b => string.Equals(b.Code, code, StringComparison.OrdinalIgnoreCase));
 
     public void AddHistory(DateOnly date, string text)
     {

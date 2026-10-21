@@ -8,27 +8,41 @@ public sealed class FolderScanner(StudyFolder folder)
 {
     private static readonly StringComparer NameOrder = StringComparer.Create(CultureInfo.GetCultureInfo("pt-BR"), ignoreCase: true);
 
-    public Task<FolderScan> ScanAsync(Block block, CancellationToken cancellationToken = default) =>
-        Task.Run(() => Scan(block, cancellationToken), cancellationToken);
+    public Task<FolderScan> ScanAsync(IEnumerable<Block> blocks, CancellationToken cancellationToken = default) =>
+        Task.Run(() => Scan(blocks, cancellationToken), cancellationToken);
 
-    public FolderScan Scan(Block block, CancellationToken cancellationToken = default)
+    public FolderScan Scan(Block block, CancellationToken cancellationToken = default) => Scan([block], cancellationToken);
+
+    // Reads every assignment folder of the detailed blocks. For finished blocks only the course folders are checked.
+    public FolderScan Scan(IEnumerable<Block> blocks, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(block);
+        ArgumentNullException.ThrowIfNull(blocks);
 
-        var assignments = new Dictionary<(string, string), AssignmentFolder>();
-        var courses = new List<string>();
+        var assignments = new Dictionary<AssignmentKey, AssignmentFolder>();
+        var courses = new List<CourseKey>();
 
-        foreach (var (_, course) in block.Courses())
+        foreach (var block in blocks)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!TryResolve(out var coursePath, block.Folder, course.Folder) || !Directory.Exists(coursePath))
-                continue;
-            courses.Add(course.Code);
-
-            foreach (var assignment in course.Assignments)
+            ArgumentNullException.ThrowIfNull(block);
+            foreach (var (_, course) in block.Courses())
             {
-                assignments[(course.Code, assignment.Id)] =
-                    TryResolve(out var path, block.Folder, course.Folder, assignment.Id) ? Read(path) : AssignmentFolder.Missing;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!TryResolve(out var coursePath, block.Folder, course.Folder) || !Directory.Exists(coursePath))
+                    continue;
+                courses.Add(new CourseKey(block.Code, course.Code));
+
+                foreach (var assignment in course.Assignments)
+                {
+                    assignments[AssignmentKey.Of(block, course, assignment)] =
+                        TryResolve(out var path, block.Folder, course.Folder, assignment.Id) ? Read(path) : AssignmentFolder.Missing;
+                }
+            }
+
+            foreach (var course in block.CompletedCourses ?? [])
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (TryResolve(out var coursePath, block.Folder, course.Folder) && Directory.Exists(coursePath))
+                    courses.Add(new CourseKey(block.Code, course.Code));
             }
         }
 

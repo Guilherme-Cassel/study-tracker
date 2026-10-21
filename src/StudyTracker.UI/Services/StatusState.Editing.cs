@@ -26,14 +26,14 @@ public sealed partial class StatusState
 {
     // Applies the edit to the latest file on disk. It only refuses when this same assignment changed in the
     // meantime (fields of "original" differ from the file); edits elsewhere in the file are kept.
-    public Task<SaveOutcome> SaveEditAsync(string courseCode, string assignmentId, AssignmentEdit original, AssignmentEdit edit,
+    public Task<SaveOutcome> SaveEditAsync(AssignmentKey key, AssignmentEdit original, AssignmentEdit edit,
         string historyText, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(original);
         ArgumentNullException.ThrowIfNull(edit);
         ArgumentException.ThrowIfNullOrWhiteSpace(historyText);
 
-        return WriteAsync(rescan: false, (data, _, item) =>
+        return WriteAsync(rescan: false, (_, _, item) =>
         {
             var current = AssignmentEdit.From(item.Assignment);
             var changed = current.ChangedFields(original);
@@ -42,27 +42,29 @@ public sealed partial class StatusState
 
             edit.ApplyTo(item.Assignment);
             return (null, historyText);
-        }, courseCode, assignmentId, cancellationToken);
+        }, key, cancellationToken);
     }
 
     // Recomputes the suggestion from a fresh scan, so what gets applied is what is on disk now.
-    public Task<SaveOutcome> ApplyFolderSuggestionAsync(string courseCode, string assignmentId, CancellationToken cancellationToken = default) =>
+    public Task<SaveOutcome> ApplyFolderSuggestionAsync(AssignmentKey key, CancellationToken cancellationToken = default) =>
         WriteAsync(rescan: true, (_, scan, item) =>
         {
-            var assignmentFolder = scan.For(item.Course, item.Assignment);
+            var assignmentFolder = scan.For(item.Block, item.Course, item.Assignment);
             var files = FolderRules.Detect(item.Course.Code, item.Assignment.Id, assignmentFolder.Entries, folder.DeliverablePrefix);
             if (FolderRules.Suggest(item.Assignment, assignmentFolder, files) is not { } suggestion)
                 return (SaveOutcome.NothingToDo, null);
 
             suggestion.ApplyTo(item.Assignment);
             return (null, $"{item.Course.Code} {item.Assignment.Id}: painel acertado pela pasta ({Display.Describe(suggestion)}).");
-        }, courseCode, assignmentId, cancellationToken);
+        }, key, cancellationToken);
 
     private async Task<SaveOutcome> WriteAsync(
         bool rescan,
         Func<StatusData, FolderScan, AssignmentItem, (SaveOutcome? Early, string? History)> change,
-        string courseCode, string assignmentId, CancellationToken cancellationToken)
+        AssignmentKey key, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(key);
+
         var changed = false;
         await _gate.WaitAsync(cancellationToken);
         try
@@ -77,12 +79,11 @@ public sealed partial class StatusState
             }
 
             var data = fresh.Data;
-            if (data.Blocks.Count(b => b.IsCurrent) != 1) return SaveOutcome.Failed;
-            var block = data.CurrentBlock;
-            if (block.FindAssignment(courseCode, assignmentId) is not { } item) return SaveOutcome.NotFound;
+            if (data.FindBlock(key.BlockCode) is not { } block) return SaveOutcome.NotFound;
+            if (block.FindAssignment(key.CourseCode, key.AssignmentId) is not { } item) return SaveOutcome.NotFound;
 
             var scan = rescan || _current?.Folders is null || changed
-                ? await scanner.ScanAsync(block, cancellationToken)
+                ? await scanner.ScanAsync(data.Blocks, cancellationToken)
                 : _current.Folders;
 
             var (early, history) = change(data, scan, item);
