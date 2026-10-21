@@ -4,12 +4,31 @@ using StudyTracker.Infrastructure.Status;
 using StudyTracker.Web.Components;
 using StudyTracker.Web.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var isDevelopment = string.Equals(
+    Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), Environments.Development, StringComparison.OrdinalIgnoreCase);
+
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    // The installed app starts from a shortcut, so its files are next to the exe, not in the working directory.
+    ContentRootPath = isDevelopment ? null : AppContext.BaseDirectory
+});
 
 builder.Configuration
     .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false)
+    .AddJsonFile(AppLauncher.UserConfigFile, optional: true, reloadOnChange: false)
     .AddEnvironmentVariables()
     .AddCommandLine(args);
+
+var browserUrl = AppLauncher.BrowserUrl(builder.Configuration);
+var openBrowser = builder.Configuration.GetValue<bool>("OpenBrowser");
+
+using var instance = new Mutex(initiallyOwned: true, AppLauncher.InstanceName, out var isFirstInstance);
+if (!isFirstInstance)
+{
+    if (openBrowser) AppLauncher.OpenBrowser(browserUrl);
+    return;
+}
 
 builder.Services.AddSingleton(new StudyFolder(
     builder.Configuration["StudyFolder:RootPath"],
@@ -39,5 +58,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+if (openBrowser)
+    app.Lifetime.ApplicationStarted.Register(() => AppLauncher.OpenBrowser(browserUrl, app.Logger));
 
 app.Run();

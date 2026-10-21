@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/StudyTracker.Core/StudyTracker.Core.csproj" />
     <Project Path="src/StudyTracker.Infrastructure/StudyTracker.Infrastructure.csproj" />
+    <Project Path="src/StudyTracker.Launcher/StudyTracker.Launcher.csproj" />
     <Project Path="src/StudyTracker.Web/StudyTracker.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

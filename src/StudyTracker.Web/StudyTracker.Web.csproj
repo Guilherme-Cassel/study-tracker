@@ -7,6 +7,17 @@
 
   <PropertyGroup>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <AssemblyName>StudyTracker</AssemblyName>
+    <RootNamespace>StudyTracker.Web</RootNamespace>
   </PropertyGroup>
+
+  <!-- Must stay a console app (Exe): the package that ships blazor.web.js only adds it when OutputType is Exe.
+       StudyTracker.Launcher starts this exe without a console window. -->
+
+  <ItemGroup>
+    <!-- Machine settings live in %LOCALAPPDATA%\StudyTracker, never inside the published app. -->
+    <Content Update="appsettings.Local.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Local.example.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 
 </Project>
