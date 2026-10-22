@@ -23,6 +23,7 @@ internal static class Program
         if (CreateBuilder(args) is not { } builder) return 0;
 
         builder.Services.AddWindowsFormsBlazorWebView();
+        builder.Services.AddScoped<StudyTracker.UI.Services.Clipboard, WindowsClipboard>();
         if (builder.Environment.IsDevelopment())
             builder.Services.AddBlazorWebViewDeveloperTools();
 

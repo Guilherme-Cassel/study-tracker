@@ -52,9 +52,13 @@
             <textarea rows="6" placeholder="@($"Cole o texto aqui: salva na hora como {FileName}")" aria-label="@Label"
                       @bind="_value" @bind:event="oninput" @bind:after="OnInputAsync" @onpaste="() => _pasted = true" disabled="@_saving"></textarea>
             <div class="paste-actions">
-                @if (ExistingName is not null)
+                @if (SameFile)
                 {
                     <label class="overwrite"><input type="checkbox" @bind="_overwrite" /> substituir @ExistingName</label>
+                }
+                else if (ExistingName is not null)
+                {
+                    <span class="status">@ExistingName continua na pasta; o texto vai para @FileName</span>
                 }
                 <button type="button" class="btn btn-sm btn-primary" disabled="@(!CanSave)" @onclick="SaveAsync">
                     @(_saving ? "Salvando…" : $"Salvar {FileName}")
@@ -92,7 +96,9 @@
     private string? _content;
     private string? _loadedFor;
 
-    private bool CanSave => !_saving && !string.IsNullOrWhiteSpace(_value) && (ExistingName is null || _overwrite);
+    private bool SameFile => string.Equals(ExistingName, FileName, StringComparison.OrdinalIgnoreCase);
+
+    private bool CanSave => !_saving && !string.IsNullOrWhiteSpace(_value) && (!SameFile || _overwrite);
 
     private static bool IsText(string name) =>
         name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".md", StringComparison.OrdinalIgnoreCase);

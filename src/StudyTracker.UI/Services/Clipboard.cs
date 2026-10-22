@@ -2,12 +2,13 @@ using Microsoft.JSInterop;
 
 namespace StudyTracker.UI.Services;
 
-// One per browser connection (scoped): copies text to the clipboard through the browser.
-public sealed class Clipboard(IJSRuntime js) : IAsyncDisposable
+// Copies text to the clipboard. The base implementation goes through the browser, which only works from a
+// user gesture; a desktop host can register a subclass that uses the operating system clipboard instead.
+public class Clipboard(IJSRuntime js) : IAsyncDisposable
 {
     private IJSObjectReference? _module;
 
-    public async Task<bool> CopyAsync(string text)
+    public virtual async Task<bool> CopyAsync(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         try
@@ -30,5 +31,6 @@ public sealed class Clipboard(IJSRuntime js) : IAsyncDisposable
         catch (JSDisconnectedException)
         {
         }
+        GC.SuppressFinalize(this);
     }
 }
