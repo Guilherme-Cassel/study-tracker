@@ -3,28 +3,29 @@
 @inject Notifier Notifier
 @inject TimeProvider Time
 
-<div class="modal-backdrop" @onclick="CancelAsync"></div>
-<div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title" @onkeydown="OnKeyDown">
-    <form class="form" @onsubmit="SaveAsync">
-        <h2 id="edit-title">Editar @Course.Code @Assignment.Id <small>@Course.Name</small></h2>
+@* The assignment's editable fields, on the page itself. Save and discard only show up once something changed. *@
 
+<section class="card section">
+    <div class="section-head">
+        <h2>Estado</h2>
         @if (_conflictMessage is not null)
         {
-            <p class="note note-warn" role="alert">@_conflictMessage</p>
+            <span class="status warn-text" role="alert">@_conflictMessage</span>
         }
+    </div>
 
-        <label>
-            Status
-            <select @ref="_first" @bind="_m.Status" @bind:after="OnStatusChanged">
-                @foreach (var status in Display.StatusesByPriority)
-                {
-                    <option value="@status">@status.Label()</option>
-                }
-            </select>
-            @FileNow(EditField.Status, _conflictCurrent?.Status.Label())
-        </label>
-
-        <div class="row2">
+    <form class="form" @onsubmit="SaveAsync">
+        <div class="row3">
+            <label>
+                Status
+                <select @bind="_m.Status" @bind:after="OnStatusChanged">
+                    @foreach (var status in Display.StatusesByPriority)
+                    {
+                        <option value="@status">@status.Label()</option>
+                    }
+                </select>
+                @FileNow(EditField.Status, _conflictCurrent?.Status.Label())
+            </label>
             <label>
                 Prazo
                 <input type="date" @bind="_m.DueOn" @bind:after="Refresh" />
@@ -67,23 +68,26 @@
             @FileNow(EditField.Notes, _conflictCurrent?.Notes ?? "vazio")
         </label>
 
-        <label>
-            Linha no histórico
-            <input @bind="_history" @bind:event="oninput" @bind:after="OnHistoryTyped" placeholder="gerada a partir do que mudou" maxlength="300" />
-        </label>
+        @if (HasChanges)
+        {
+            <label>
+                Linha no histórico
+                <input @bind="_history" @bind:event="oninput" @bind:after="OnHistoryTyped" placeholder="gerada a partir do que mudou" maxlength="300" />
+            </label>
 
-        <div class="form-actions">
-            <button type="button" class="btn" @onclick="CancelAsync" disabled="@_saving">Cancelar</button>
-            <button type="submit" class="btn btn-primary" disabled="@(_saving || !HasChanges)">@(_saving ? "Salvando…" : "Salvar")</button>
-        </div>
+            <div class="form-actions">
+                <span class="status">Alterações ainda não salvas</span>
+                <button type="button" class="btn" @onclick="Discard" disabled="@_saving">Descartar</button>
+                <button type="submit" class="btn btn-primary" disabled="@_saving">@(_saving ? "Salvando…" : "Salvar")</button>
+            </div>
+        }
     </form>
-</div>
+</section>
 
 @code {
     [Parameter, EditorRequired] public Block Block { get; set; } = default!;
     [Parameter, EditorRequired] public Course Course { get; set; } = default!;
     [Parameter, EditorRequired] public Assignment Assignment { get; set; } = default!;
-    [Parameter] public EventCallback OnClose { get; set; }
 
     private EditModel _m = new();
     private AssignmentEdit _original = default!;
@@ -94,21 +98,32 @@
     private IReadOnlyList<EditField> _conflictFields = [];
     private AssignmentEdit? _conflictCurrent;
     private string? _conflictMessage;
-    private ElementReference _first;
 
     private DateOnly Today => Time.Today();
 
     private bool HasChanges => _m.ToEdit().ChangedFields(_original).Count > 0;
 
-    protected override void OnInitialized()
+    protected override void OnInitialized() => Reset(AssignmentEdit.From(Assignment));
+
+    // The page re-renders with a fresh Assignment whenever the file or the folders change. What was typed
+    // stays; if the file changed in these fields, saving reports the conflict field by field.
+    protected override void OnParametersSet()
     {
-        _original = AssignmentEdit.From(Assignment);
-        _m = EditModel.From(_original);
+        var fromFile = AssignmentEdit.From(Assignment);
+        if (fromFile.ChangedFields(_original).Count > 0 && !HasChanges && !_saving)
+            Reset(fromFile);
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private void Reset(AssignmentEdit original)
     {
-        if (firstRender) await _first.FocusAsync();
+        _original = original;
+        _m = EditModel.From(original);
+        _history = "";
+        _historyTyped = false;
+        _errors = [];
+        _conflictFields = [];
+        _conflictCurrent = null;
+        _conflictMessage = null;
     }
 
     private void OnStatusChanged()
@@ -128,16 +143,14 @@
 
     private void OnHistoryTyped() => _historyTyped = !string.IsNullOrWhiteSpace(_history);
 
+    private void Discard() => Reset(AssignmentEdit.From(Assignment));
+
     private async Task SaveAsync()
     {
         var edit = _m.ToEdit().Normalized();
         _errors = edit.Validate(_original, Today);
         if (_errors.Count > 0) return;
-        if (edit.ChangedFields(_original).Count == 0)
-        {
-            await OnClose.InvokeAsync();
-            return;
-        }
+        if (edit.ChangedFields(_original).Count == 0) return;
 
         var history = string.IsNullOrWhiteSpace(_history) ? Display.HistoryText(Course, Assignment, _original, edit) : _history.Trim();
         _saving = true;
@@ -148,7 +161,7 @@
         {
             case SaveStatus.Saved:
                 Notifier.Info($"{Course.Code} {Assignment.Id} salvo.");
-                await OnClose.InvokeAsync();
+                Reset(edit);
                 break;
             case SaveStatus.Conflict when outcome.Current is not null:
                 _conflictFields = outcome.ChangedElsewhere ?? [];
@@ -164,17 +177,12 @@
                 break;
             case SaveStatus.NotFound:
                 Notifier.Error($"{Course.Code} {Assignment.Id} não existe mais no arquivo de dados.");
-                await OnClose.InvokeAsync();
                 break;
             default:
                 Notifier.Error("Não consegui gravar o status-dados.js. Confira se o Google Drive está aberto.");
                 break;
         }
     }
-
-    private Task CancelAsync() => _saving ? Task.CompletedTask : OnClose.InvokeAsync();
-
-    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CancelAsync() : Task.CompletedTask;
 
     private RenderFragment? FieldError(EditField field) =>
         _errors.FirstOrDefault(e => e.Field == field) is { } error

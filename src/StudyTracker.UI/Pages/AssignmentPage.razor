@@ -1,0 +1,197 @@
+@page "/blocos/{Code}/{Sigla}/{Id}"
+@inherits StatusPageBase
+@inject Notifier Notifier
+
+<StatusGate Result="Result" OnRetry="LoadAsync">
+    @{
+        var block = context.FindBlock(Code);
+        var found = block?.FindAssignment(Sigla, Id);
+    }
+
+    @if (block is null || found is null)
+    {
+        <PageTitle>Trabalho não encontrado · Study Tracker</PageTitle>
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block?.Name ?? Code, block is null ? null : Display.BlockUrl(block)), (Sigla, null), (Id, null)])" />
+        <header class="page-head">
+            <div>
+                <h1>Trabalho não encontrado</h1>
+                <p class="sub">
+                    @if (block is null)
+                    {
+                        <span>Não existe um bloco com o código @Code. <a href="blocos">Ver blocos</a></span>
+                    }
+                    else
+                    {
+                        <span>Não existe @Sigla @Id no bloco @block.Name. <a href="@Display.BlockUrl(block)">Ver o bloco</a></span>
+                    }
+                </p>
+            </div>
+        </header>
+    }
+    else
+    {
+        var (_, _, course, a) = found;
+        var open = a.Status != AssignmentStatus.Submitted;
+        var folder = Result!.FolderOf(block, course, a);
+        string[] target = [block.Folder, course.Folder, a.Id];
+        var briefFile = folder.Folder.Entries.FirstOrDefault(e => !e.IsDirectory && e.Name.StartsWith($"Enunciado {a.Id}.", StringComparison.OrdinalIgnoreCase))?.Name;
+        var rubricsFile = folder.Folder.Entries.FirstOrDefault(e => !e.IsDirectory && e.Name.StartsWith($"Rubricas {a.Id}.", StringComparison.OrdinalIgnoreCase))?.Name;
+        var history = context.History.Where(h => h.Text.StartsWith($"{course.Code} {a.Id}", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        <PageTitle>@course.Code @a.Id · Study Tracker</PageTitle>
+
+        <Breadcrumbs Items="@([("Blocos", "/blocos"), (block.Name, Display.BlockUrl(block)), (course.Code, Display.CourseUrl(block, course)), (a.Id, null)])" />
+        <FileDrop Target="target" TargetLabel="@($"{course.Code} / {a.Id}")" AssignmentId="@a.Id" Context="inputId">
+            <header class="page-head work-head st-@a.Status.Key()">
+                <div>
+                    <div class="head-title">
+                        <h1>@course.Code @a.Id</h1>
+                        <StatusPill Status="a.Status" />
+                        <DueText Assignment="a" Today="Today" />
+                    </div>
+                    <p class="sub">
+                        <a href="@Display.CourseUrl(block, course)">@course.Name</a>
+                        @if (!string.IsNullOrEmpty(course.Professor))
+                        {
+                            <span> · Prof. @course.Professor</span>
+                        }
+                        · @block.Name
+                    </p>
+                    @if (!string.IsNullOrEmpty(a.Summary))
+                    {
+                        <p class="summary">@a.Summary</p>
+                    }
+                </div>
+                <div class="head-actions">
+                    <CopyPromptButton Block="block" Course="course" Assignment="a" Folder="folder" Class="btn-primary" />
+                    @if (folder.Folder.Exists)
+                    {
+                        <label class="btn" for="@inputId" title="Ou arraste arquivos para cima do cabeçalho">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4" /><path d="M7 9l5-5 5 5" /><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
+                            Arquivos
+                        </label>
+                        <OpenFolderButton Segments="target" />
+                    }
+                </div>
+            </header>
+        </FileDrop>
+
+        <section class="card section">
+            <div class="section-head">
+                <h2>Pasta</h2>
+                @if (folder.Folder.Exists)
+                {
+                    <span class="status">@Display.Plural(folder.Folder.Entries.Count, "item", "itens")</span>
+                }
+                else
+                {
+                    <span class="status warn-text">não existe</span>
+                }
+            </div>
+
+            @if (!folder.Folder.Exists)
+            {
+                <div class="note note-warn folder-missing" style="margin-top: 0">
+                    <p><b>A pasta do trabalho ainda não existe.</b> O app não cria pastas: peça ao Claude Code para criar a estrutura, copiando o prompt.</p>
+                    <p><code>@System.IO.Path.Combine(State.FolderPath, block.Folder, course.Folder, a.Id)</code></p>
+                    <div><CopyPromptButton Block="block" Course="course" Assignment="a" Folder="folder" Class="btn-sm" /></div>
+                </div>
+            }
+            else
+            {
+                @if (open)
+                {
+                    <StageChips Stages="a.Stages" />
+                }
+                @if (folder.Suggestion is { } suggestion)
+                {
+                    <div class="note note-suggest note-action">
+                        <span><b>Pela pasta:</b> @Display.Describe(suggestion).</span>
+                        <button type="button" class="btn btn-sm" disabled="@_applying" @onclick="() => ApplyAsync(block, course, a)">
+                            @(_applying ? "Aplicando…" : "Aplicar no painel")
+                        </button>
+                    </div>
+                }
+                @if (folder.Files.MisnamedDeliverables.Count > 0)
+                {
+                    <p class="note note-warn">
+                        <b>Nome fora do padrão:</b> @string.Join(", ", folder.Files.MisnamedDeliverables).
+                        O esperado é @FolderRules.DeliverableBaseName(Result.DeliverablePrefix!, course.Code, a.Id).&lt;ext&gt;
+                    </p>
+                }
+                @if (folder.Folder.Entries.Count == 0)
+                {
+                    <p class="empty">A pasta está vazia.</p>
+                }
+                else
+                {
+                    <ul class="files-list" style="margin-top: 12px">
+                        @foreach (var entry in folder.Folder.Entries)
+                        {
+                            <li class="@(entry.IsDirectory ? "is-dir" : "")">@entry.Name@(entry.IsDirectory ? "/" : "")</li>
+                        }
+                    </ul>
+                }
+            }
+        </section>
+
+        <PasteFileBox Target="target" Label="Enunciado" FileName="@FileNaming.BriefTextFileName(a.Id)" FolderExists="folder.Folder.Exists"
+                      ExistingName="@briefFile" Hint="Cole o texto do enunciado do Moodle. Se tiver o .docx, arraste o arquivo para o cabeçalho." />
+
+        <PasteFileBox Target="target" Label="Rubricas" FileName="@FileNaming.RubricsFileName(a.Id)" FolderExists="folder.Folder.Exists"
+                      ExistingName="@rubricsFile" Hint="Cole só o texto das células escuras do Moodle, uma rubrica por linha. A frase de pontuação embaixo de cada uma não entra." />
+
+        <AssignmentForm Block="block" Course="course" Assignment="a" />
+
+        @if (history.Count > 0 || !string.IsNullOrEmpty(a.GuideFile))
+        {
+            <section class="card section">
+                <div class="section-head"><h2>Histórico do trabalho</h2></div>
+                @if (!string.IsNullOrEmpty(a.GuideFile))
+                {
+                    <p class="hint">Guia de produção: <code>@a.GuideFile</code></p>
+                }
+                @if (history.Count > 0)
+                {
+                    <ul class="history-list">
+                        @foreach (var entry in history)
+                        {
+                            <li><time>@Display.ShortDate(entry.Date)</time><span>@entry.Text</span></li>
+                        }
+                    </ul>
+                }
+            </section>
+        }
+    }
+</StatusGate>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string Sigla { get; set; } = "";
+    [Parameter] public string Id { get; set; } = "";
+
+    private bool _applying;
+
+    private async Task ApplyAsync(Block block, Course course, Assignment assignment)
+    {
+        _applying = true;
+        var outcome = await State.ApplyFolderSuggestionAsync(AssignmentKey.Of(block, course, assignment));
+        _applying = false;
+
+        switch (outcome.Status)
+        {
+            case SaveStatus.Saved:
+                Notifier.Info($"{course.Code} {assignment.Id} acertado pela pasta.");
+                break;
+            case SaveStatus.NothingToDo:
+                Notifier.Info("A pasta já bate com o painel.");
+                break;
+            case SaveStatus.Conflict:
+                Notifier.Error("O arquivo mudou no instante da gravação. Tente de novo.");
+                break;
+            default:
+                Notifier.Error("Não consegui gravar o status-dados.js. Confira se o Google Drive está aberto.");
+                break;
+        }
+    }
+}

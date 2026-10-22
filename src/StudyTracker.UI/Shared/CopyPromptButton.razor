@@ -1,0 +1,35 @@
+@inject Clipboard Clipboard
+@inject Notifier Notifier
+@inject StatusState State
+
+<button type="button" class="btn @Class" @onclick="CopyAsync" title="Copia a mensagem de início para colar no Claude Code">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+    @(_copied ? "Copiado" : Label)
+</button>
+
+@code {
+    [Parameter, EditorRequired] public Block Block { get; set; } = default!;
+    [Parameter, EditorRequired] public Course Course { get; set; } = default!;
+    [Parameter, EditorRequired] public Assignment Assignment { get; set; } = default!;
+    [Parameter, EditorRequired] public AssignmentFolderInfo Folder { get; set; } = default!;
+    [Parameter] public string Label { get; set; } = "Copiar prompt para o Claude";
+    [Parameter] public string? Class { get; set; }
+
+    private bool _copied;
+
+    private async Task CopyAsync()
+    {
+        var text = ClaudePrompt.Build(State.FolderPath, Block, Course, Assignment, Folder);
+        if (await Clipboard.CopyAsync(text))
+        {
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            _copied = false;
+        }
+        else
+        {
+            Notifier.Error("Não consegui copiar para a área de transferência.");
+        }
+    }
+}

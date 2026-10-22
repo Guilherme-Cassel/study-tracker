@@ -1,0 +1,165 @@
+@inject AssignmentFileWriter Writer
+@inject StatusState State
+@inject Notifier Notifier
+
+@* Pastes text straight into a file of the assignment folder (brief or rubrics). Pasting saves at once;
+   typed text is saved with the button. When the file already exists it is shown, and "Substituir" reopens the box. *@
+
+<section class="card section">
+    <div class="section-head">
+        <h2>@Label</h2>
+        @if (ExistingName is not null)
+        {
+            <span class="status ok">@ExistingName na pasta</span>
+            <span class="right">
+                @if (!_replacing)
+                {
+                    <button type="button" class="btn btn-sm" @onclick="() => _replacing = true">Substituir</button>
+                }
+            </span>
+        }
+        else if (!FolderExists)
+        {
+            <span class="status">a pasta do trabalho ainda não existe</span>
+        }
+    </div>
+
+    @if (ExistingName is not null && !_replacing)
+    {
+        @if (_content is not null)
+        {
+            <details class="text-details" open="@Open">
+                <summary>@(Open ? "Esconder o texto" : "Mostrar o texto")</summary>
+                <pre class="text-preview">@_content</pre>
+            </details>
+        }
+        else if (!IsText(ExistingName))
+        {
+            <p class="hint">Arquivo binário (@System.IO.Path.GetExtension(ExistingName)); abra pela pasta.</p>
+        }
+    }
+    else if (!FolderExists)
+    {
+        <p class="hint">Sem a pasta não dá para salvar. Peça ao Claude Code para criar a estrutura (botão de copiar prompt acima) e volte aqui.</p>
+    }
+    else
+    {
+        <div class="paste-box">
+            @if (!string.IsNullOrEmpty(Hint))
+            {
+                <p class="hint">@Hint</p>
+            }
+            <textarea rows="6" placeholder="@($"Cole o texto aqui: salva na hora como {FileName}")" aria-label="@Label"
+                      @bind="_value" @bind:event="oninput" @bind:after="OnInputAsync" @onpaste="() => _pasted = true" disabled="@_saving"></textarea>
+            <div class="paste-actions">
+                @if (ExistingName is not null)
+                {
+                    <label class="overwrite"><input type="checkbox" @bind="_overwrite" /> substituir @ExistingName</label>
+                }
+                <button type="button" class="btn btn-sm btn-primary" disabled="@(!CanSave)" @onclick="SaveAsync">
+                    @(_saving ? "Salvando…" : $"Salvar {FileName}")
+                </button>
+                @if (_replacing)
+                {
+                    <button type="button" class="btn btn-sm" @onclick="Cancel" disabled="@_saving">Cancelar</button>
+                }
+                @if (_error is not null)
+                {
+                    <span class="field-error" role="alert">@_error</span>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private const int MaxPreviewBytes = 200_000;
+
+    [Parameter, EditorRequired] public string[] Target { get; set; } = [];
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string FileName { get; set; } = "";
+    [Parameter, EditorRequired] public bool FolderExists { get; set; }
+    [Parameter] public string? ExistingName { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public bool Open { get; set; }
+
+    private string _value = "";
+    private bool _pasted;
+    private bool _overwrite;
+    private bool _replacing;
+    private bool _saving;
+    private string? _error;
+    private string? _content;
+    private string? _loadedFor;
+
+    private bool CanSave => !_saving && !string.IsNullOrWhiteSpace(_value) && (ExistingName is null || _overwrite);
+
+    private static bool IsText(string name) =>
+        name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ExistingName is null)
+        {
+            _content = null;
+            _loadedFor = null;
+            _replacing = false;
+            _overwrite = false;
+            return;
+        }
+        if (_loadedFor == ExistingName) return;
+        _loadedFor = ExistingName;
+        _content = IsText(ExistingName) ? await Writer.ReadTextAsync(Target, ExistingName, MaxPreviewBytes) : null;
+    }
+
+    private async Task OnInputAsync()
+    {
+        if (!_pasted) return;
+        _pasted = false;
+        if (CanSave) await SaveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave) return;
+        _saving = true;
+        _error = null;
+        try
+        {
+            await Writer.SaveTextAsync(Target, FileName, _value, overwrite: _overwrite);
+            Notifier.Info($"{FileName} salvo em {string.Join(" \\ ", Target)}.");
+            _value = "";
+            _replacing = false;
+            _overwrite = false;
+            _loadedFor = null;
+            await State.RefreshAsync();
+        }
+        catch (TargetExistsException)
+        {
+            _error = $"{FileName} apareceu na pasta enquanto você colava. Marque substituir para gravar por cima.";
+            _overwrite = false;
+            await State.RefreshAsync();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            _error = "A pasta do trabalho não existe mais.";
+            await State.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _error = $"Não consegui salvar {FileName}. Confira se o Google Drive está aberto.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        _replacing = false;
+        _overwrite = false;
+        _value = "";
+        _error = null;
+    }
+}

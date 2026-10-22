@@ -5,6 +5,9 @@
 @inject Notifier Notifier
 @inject UploadOptions Upload
 
+@* Drop zone over its content. Dropped (or picked) files show up in a panel right below, where the type and
+   name of each one can be changed before saving. Nothing is created: the target folder must exist. *@
+
 <div class="drop-host" @ref="_host">
     @ChildContent(_inputId)
     <div class="drop-overlay" aria-hidden="true">
@@ -16,10 +19,12 @@
 
 @if (_rows.Count > 0)
 {
-    <div class="modal-backdrop" @onclick="Cancel"></div>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="@($"{_inputId}-title")" @onkeydown="OnKeyDown">
+    <section class="card file-panel" aria-labelledby="@($"{_inputId}-title")">
         <form class="form" @onsubmit="SaveAsync">
-            <h2 id="@($"{_inputId}-title")">Salvar em @TargetLabel <small>@string.Join(" \\ ", Target)</small></h2>
+            <div class="section-head">
+                <h2 id="@($"{_inputId}-title")">Salvar em @TargetLabel</h2>
+                <span class="status">@string.Join(" \\ ", Target)</span>
+            </div>
 
             @foreach (var row in _rows)
             {
@@ -38,18 +43,13 @@
                     </div>
                     @if (row.Exists)
                     {
-                        <label class="check overwrite"><input type="checkbox" @bind="row.Overwrite" /> já existe; substituir</label>
+                        <label class="overwrite"><input type="checkbox" @bind="row.Overwrite" /> já existe; substituir</label>
                     }
                     @if (row.Problem is not null)
                     {
                         <span class="field-error">@row.Problem</span>
                     }
                 </div>
-            }
-
-            @if (AssignmentId is not null && _createsFolder)
-            {
-                <p class="hint">A pasta @AssignmentId ainda não existe e será criada.</p>
             }
 
             <div class="form-actions">
@@ -59,7 +59,7 @@
                 </button>
             </div>
         </form>
-    </div>
+    </section>
 }
 
 @code {
@@ -74,7 +74,6 @@
     private IJSObjectReference? _subscription;
     private List<Row> _rows = [];
     private bool _saving;
-    private bool _createsFolder;
 
     private string SaveLabel => _saving ? "Salvando…"
         : _rows.Count(r => r.WillSave) is var n and > 0 ? $"Salvar {Display.Plural(n, "arquivo", "arquivos")}" : "Salvar";
@@ -95,6 +94,11 @@
             Notifier.Error($"Solte no máximo {Upload.MaxFilesPerDrop} arquivos de uma vez.");
             return;
         }
+        if (!Writer.FolderExists(Target))
+        {
+            Notifier.Error($"A pasta {TargetLabel} não existe. Peça ao Claude Code para criar a estrutura.");
+            return;
+        }
 
         _rows = e.GetMultipleFiles(Upload.MaxFilesPerDrop).Select(file =>
         {
@@ -102,7 +106,6 @@
             var row = new Row(file) { Kind = kind, Name = NameFor(kind, file.Name) };
             return row;
         }).ToList();
-        _createsFolder = AssignmentId is not null && !Writer.FolderExists(Target);
         foreach (var row in _rows) Check(row);
     }
 
@@ -173,11 +176,6 @@
     private void Cancel()
     {
         if (!_saving) _rows = [];
-    }
-
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape") Cancel();
     }
 
     private static string Size(long bytes) => bytes switch
