@@ -29,7 +29,13 @@
             @foreach (var row in _rows)
             {
                 <div class="file-row @(row.Problem is not null ? "has-error" : "")">
-                    <span class="file-orig" title="@row.File.Name">@row.File.Name <small>@Size(row.File.Size)</small></span>
+                    <span class="file-orig" title="@row.File.Name">
+                        @row.File.Name <small>@Size(row.File.Size)</small>
+                        @if (row.SubFolder is not null)
+                        {
+                            <small class="file-dest">→ @row.SubFolder\</small>
+                        }
+                    </span>
                     <div class="file-fields">
                         @if (AssignmentId is not null)
                         {
@@ -103,7 +109,9 @@
         _rows = e.GetMultipleFiles(Upload.MaxFilesPerDrop).Select(file =>
         {
             var kind = AssignmentId is null ? FileKind.KeepName : FileNaming.Guess(file.Name);
-            var row = new Row(file) { Kind = kind, Name = NameFor(kind, file.Name) };
+            // Transcripts dropped on a course go to its "Transcrição das Aulas" folder.
+            var subFolder = AssignmentId is null && FileNaming.IsTranscript(file.Name) ? FileNaming.TranscriptsFolder : null;
+            var row = new Row(file, subFolder is null ? Target : [.. Target, subFolder]) { Kind = kind, Name = NameFor(kind, file.Name), SubFolder = subFolder };
             return row;
         }).ToList();
         foreach (var row in _rows) Check(row);
@@ -126,9 +134,11 @@
             row.Problem = $"Arquivo maior que {Upload.MaxFileMegabytes} MB.";
         else if (!FileNaming.IsValid(row.Name))
             row.Problem = "Nome inválido.";
+        else if (row.SubFolder is not null && !Writer.FolderExists(row.Target))
+            row.Problem = $"A pasta {row.SubFolder} não existe na disciplina. Peça ao Claude Code para criar.";
         else
         {
-            try { row.Exists = Writer.Exists(Target, row.Name.Trim()); }
+            try { row.Exists = Writer.Exists(row.Target, row.Name.Trim()); }
             catch (ArgumentException) { row.Problem = "Nome inválido."; }
         }
 
@@ -155,8 +165,8 @@
             try
             {
                 await using var stream = row.File.OpenReadStream(Upload.MaxFileBytes);
-                await Writer.SaveAsync(Target, row.Name.Trim(), stream, row.Overwrite);
-                saved.Add(row.Name.Trim());
+                await Writer.SaveAsync(row.Target, row.Name.Trim(), stream, row.Overwrite);
+                saved.Add(row.SubFolder is null ? row.Name.Trim() : $"{row.SubFolder}\\{row.Name.Trim()}");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
@@ -201,9 +211,11 @@
         }
     }
 
-    private sealed class Row(IBrowserFile file)
+    private sealed class Row(IBrowserFile file, string[] target)
     {
         public IBrowserFile File { get; } = file;
+        public string[] Target { get; } = target;
+        public string? SubFolder { get; init; }
         public FileKind Kind { get; set; }
         public string Name { get; set; } = "";
         public bool Exists { get; set; }

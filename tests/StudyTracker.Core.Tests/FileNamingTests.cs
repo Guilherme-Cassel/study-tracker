@@ -62,4 +62,15 @@ public class FileNamingTests
         Assert.True(FileNaming.IsValid(new string('a', FileNaming.MaxNameLength)));
         Assert.False(FileNaming.IsValid(new string('a', FileNaming.MaxNameLength + 1)));
     }
+
+    [Theory]
+    [InlineData("DR3_aula-14-10-2026_19-00.vtt", true)]
+    [InlineData("AULA.VTT", true)]
+    [InlineData("aula.txt", false)]
+    [InlineData("vtt", false)]
+    public void IsTranscript_LooksAtTheExtension(string name, bool expected)
+    {
+        Assert.Equal(expected, FileNaming.IsTranscript(name));
+        Assert.Equal("Transcrição das Aulas", FileNaming.TranscriptsFolder);
+    }
 }

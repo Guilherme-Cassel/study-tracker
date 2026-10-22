@@ -26,6 +26,15 @@ public static class FileNaming
     // A brief pasted as text (the Moodle one is usually a .docx dropped on the assignment).
     public static string BriefTextFileName(string assignmentId) => $"Enunciado {assignmentId}.md";
 
+    // Class transcripts (.vtt) live in the course's "Transcrição das Aulas" folder, not next to the assignments.
+    public const string TranscriptsFolder = "Transcrição das Aulas";
+
+    public static bool IsTranscript(string originalName)
+    {
+        ArgumentNullException.ThrowIfNull(originalName);
+        return string.Equals(Path.GetExtension(originalName), ".vtt", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static FileKind Guess(string originalName)
     {
         ArgumentNullException.ThrowIfNull(originalName);

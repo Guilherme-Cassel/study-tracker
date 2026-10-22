@@ -15,7 +15,7 @@ Screens go from the whole course down to one assignment:
 | Blocks | `/blocos` | Every block (term pair) with progress and its courses |
 | Block | `/` and `/blocos/{code}` | Counters by status, next steps, deadlines, missing context, folder suggestions, courses by group. `/` opens the block marked `atual` (or the first one with course data); a picker switches blocks |
 | Block assignments | `/blocos/{code}/trabalhos` | The block's assignments, filterable by status |
-| Course | `/blocos/{code}/{sigla}` | The course's assignments as rows, with stage dots and folder warnings; drag files onto the header to save them in the course folder |
+| Course | `/blocos/{code}/{sigla}` | The course's assignments as rows, with stage dots and folder warnings; drag files onto the header to save them in the course folder (`.vtt` transcripts go to its `Transcrição das Aulas` subfolder) |
 | Assignment | `/blocos/{code}/{sigla}/{id}` | Folder contents and suggestions, brief, rubrics, editable state, that assignment's history, and a button that copies the prompt for Claude Code |
 | History | `/historico` | The last entries recorded in `status-dados.js` |
 
